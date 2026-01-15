@@ -1,5 +1,6 @@
 """Tests for core/bar_raiser.py."""
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +9,6 @@ import pytest
 from config.settings import CriticStrictness
 from core.bar_raiser import BarRaiser, BarRaiserResult, AttemptRecord
 from core.gemini_client import GeminiClient, GeminiResponse
-from core.claude_client import ClaudeClient, ClaudeResponse, CritiqueResult
 
 
 class TestAttemptRecord:
@@ -77,44 +77,43 @@ class TestBarRaiserResult:
         assert result.error == "Timeout"
 
 
-class TestBarRaiser:
-    """Tests for BarRaiser class."""
+class TestBarRaiserGeminiOnly:
+    """Tests for BarRaiser in Gemini-only mode."""
 
     @pytest.fixture
-    def mock_clients(self):
-        """Create mock Gemini and Claude clients."""
-        gemini = MagicMock(spec=GeminiClient)
-        claude = MagicMock(spec=ClaudeClient)
-        return gemini, claude
+    def mock_gemini(self):
+        """Create mock Gemini client."""
+        return MagicMock(spec=GeminiClient)
 
     @pytest.fixture
-    def bar_raiser(self, mock_clients):
-        """Create a BarRaiser instance with mock clients."""
-        gemini, claude = mock_clients
-        return BarRaiser(
-            gemini_client=gemini,
-            claude_client=claude,
-            status_callback=lambda x: None,
-        )
+    def bar_raiser(self, mock_gemini, mock_env_vars):
+        """Create a BarRaiser instance with mock Gemini client."""
+        with patch.dict(os.environ, {"USE_CLAUDE": "false"}, clear=False):
+            from config.settings import refresh_settings
+            refresh_settings()
 
-    def test_process_topic_pass_first_attempt(self, bar_raiser, mock_clients):
+            return BarRaiser(
+                gemini_client=mock_gemini,
+                claude_client=None,  # Gemini-only mode
+                status_callback=lambda x: None,
+            )
+
+    def test_process_topic_pass_first_attempt(self, bar_raiser, mock_gemini):
         """Test topic passes on first attempt."""
-        gemini, claude = mock_clients
-
         # Mock Gemini draft response
-        gemini.generate_section_draft.return_value = GeminiResponse(
+        mock_gemini.generate_section_draft.return_value = GeminiResponse(
             content="Great draft content",
             model="gemini-3-pro-preview",
             duration_ms=500,
             success=True,
         )
 
-        # Mock Claude critique - PASS
-        claude.critique_draft.return_value = (
-            CritiqueResult(passed=True, feedback="Approved", raw_response="PASS"),
-            ClaudeResponse(
-                content="PASS",
-                model="claude-opus-4-5-20251101",
+        # Mock Gemini critique - PASS
+        mock_gemini.critique_draft.return_value = (
+            {"passed": True, "feedback": "Approved", "raw_response": "PASS\nApproved"},
+            GeminiResponse(
+                content="PASS\nApproved",
+                model="gemini-3-pro-preview",
                 duration_ms=300,
                 success=True,
             ),
@@ -131,12 +130,10 @@ class TestBarRaiser:
         assert len(result.attempts) == 1
         assert result.attempts[0].critique_passed is True
 
-    def test_process_topic_pass_second_attempt(self, bar_raiser, mock_clients):
+    def test_process_topic_pass_second_attempt(self, bar_raiser, mock_gemini):
         """Test topic passes on second attempt."""
-        gemini, claude = mock_clients
-
         # First draft
-        gemini.generate_section_draft.return_value = GeminiResponse(
+        mock_gemini.generate_section_draft.return_value = GeminiResponse(
             content="First draft",
             model="gemini-3-pro-preview",
             duration_ms=500,
@@ -144,7 +141,7 @@ class TestBarRaiser:
         )
 
         # Rewrite for second attempt
-        gemini.rewrite_section.return_value = GeminiResponse(
+        mock_gemini.rewrite_section.return_value = GeminiResponse(
             content="Improved draft",
             model="gemini-3-pro-preview",
             duration_ms=600,
@@ -152,14 +149,14 @@ class TestBarRaiser:
         )
 
         # Mock critique responses - FAIL then PASS
-        claude.critique_draft.side_effect = [
+        mock_gemini.critique_draft.side_effect = [
             (
-                CritiqueResult(passed=False, feedback="Missing trade-offs", raw_response="FAIL"),
-                ClaudeResponse(content="FAIL", model="claude-opus-4-5-20251101", duration_ms=300, success=True),
+                {"passed": False, "feedback": "Missing trade-offs", "raw_response": "FAIL"},
+                GeminiResponse(content="FAIL", model="gemini-3-pro-preview", duration_ms=300, success=True),
             ),
             (
-                CritiqueResult(passed=True, feedback="Approved", raw_response="PASS"),
-                ClaudeResponse(content="PASS", model="claude-opus-4-5-20251101", duration_ms=300, success=True),
+                {"passed": True, "feedback": "Approved", "raw_response": "PASS"},
+                GeminiResponse(content="PASS", model="gemini-3-pro-preview", duration_ms=300, success=True),
             ),
         ]
 
@@ -175,18 +172,16 @@ class TestBarRaiser:
         assert result.attempts[0].critique_passed is False
         assert result.attempts[1].critique_passed is True
 
-    def test_process_topic_low_confidence_after_max_attempts(self, bar_raiser, mock_clients):
+    def test_process_topic_low_confidence_after_max_attempts(self, bar_raiser, mock_gemini):
         """Test topic marked low confidence after all attempts fail."""
-        gemini, claude = mock_clients
-
         # All drafts
-        gemini.generate_section_draft.return_value = GeminiResponse(
+        mock_gemini.generate_section_draft.return_value = GeminiResponse(
             content="Draft content",
             model="gemini-3-pro-preview",
             duration_ms=500,
             success=True,
         )
-        gemini.rewrite_section.return_value = GeminiResponse(
+        mock_gemini.rewrite_section.return_value = GeminiResponse(
             content="Rewritten content",
             model="gemini-3-pro-preview",
             duration_ms=500,
@@ -194,9 +189,9 @@ class TestBarRaiser:
         )
 
         # All critiques fail
-        claude.critique_draft.return_value = (
-            CritiqueResult(passed=False, feedback="Still not good enough", raw_response="FAIL"),
-            ClaudeResponse(content="FAIL", model="claude-opus-4-5-20251101", duration_ms=300, success=True),
+        mock_gemini.critique_draft.return_value = (
+            {"passed": False, "feedback": "Still not good enough", "raw_response": "FAIL"},
+            GeminiResponse(content="FAIL", model="gemini-3-pro-preview", duration_ms=300, success=True),
         )
 
         result = bar_raiser.process_topic(
@@ -209,28 +204,26 @@ class TestBarRaiser:
         assert result.low_confidence is True  # But didn't pass review
         assert len(result.attempts) == 3  # max_retries + 1
 
-    def test_strictness_relaxes_on_third_attempt(self, bar_raiser, mock_clients):
+    def test_strictness_relaxes_on_third_attempt(self, bar_raiser, mock_gemini):
         """Test strictness relaxes to MEDIUM on third attempt."""
-        gemini, claude = mock_clients
-
-        gemini.generate_section_draft.return_value = GeminiResponse(
+        mock_gemini.generate_section_draft.return_value = GeminiResponse(
             content="Draft", model="gemini-3-pro-preview", duration_ms=500, success=True
         )
-        gemini.rewrite_section.return_value = GeminiResponse(
+        mock_gemini.rewrite_section.return_value = GeminiResponse(
             content="Rewritten", model="gemini-3-pro-preview", duration_ms=500, success=True
         )
 
-        # Track strictness levels
+        # Track strictness levels passed to critique
         strictness_levels = []
 
         def capture_strictness(draft, topic, strictness):
             strictness_levels.append(strictness)
             return (
-                CritiqueResult(passed=False, feedback="Fail", raw_response="FAIL"),
-                ClaudeResponse(content="FAIL", model="claude-opus-4-5-20251101", duration_ms=100, success=True),
+                {"passed": False, "feedback": "Fail", "raw_response": "FAIL"},
+                GeminiResponse(content="FAIL", model="gemini-3-pro-preview", duration_ms=100, success=True),
             )
 
-        claude.critique_draft.side_effect = capture_strictness
+        mock_gemini.critique_draft.side_effect = capture_strictness
 
         bar_raiser.process_topic(
             topic="Test topic",
@@ -238,24 +231,24 @@ class TestBarRaiser:
             worker_id=1,
         )
 
-        assert strictness_levels[0] == CriticStrictness.HIGH
-        assert strictness_levels[1] == CriticStrictness.HIGH
-        assert strictness_levels[2] == CriticStrictness.MEDIUM
+        # Strictness values are passed as strings in Gemini-only mode
+        # Default is LOW, relaxes to LOW on 3rd attempt (stays at lowest)
+        assert strictness_levels[0] == "low"
+        assert strictness_levels[1] == "low"
+        assert strictness_levels[2] == "low"
 
-    def test_process_topics_parallel(self, bar_raiser, mock_clients):
+    def test_process_topics_parallel(self, bar_raiser, mock_gemini):
         """Test parallel processing of multiple topics."""
-        gemini, claude = mock_clients
-
-        gemini.generate_section_draft.return_value = GeminiResponse(
+        mock_gemini.generate_section_draft.return_value = GeminiResponse(
             content="Draft content",
             model="gemini-3-pro-preview",
             duration_ms=100,
             success=True,
         )
 
-        claude.critique_draft.return_value = (
-            CritiqueResult(passed=True, feedback="OK", raw_response="PASS"),
-            ClaudeResponse(content="PASS", model="claude-opus-4-5-20251101", duration_ms=100, success=True),
+        mock_gemini.critique_draft.return_value = (
+            {"passed": True, "feedback": "OK", "raw_response": "PASS"},
+            GeminiResponse(content="PASS", model="gemini-3-pro-preview", duration_ms=100, success=True),
         )
 
         topics = ["Topic 1", "Topic 2", "Topic 3"]
@@ -270,29 +263,127 @@ class TestBarRaiser:
         assert len(results) == 3
         assert all(r.success for r in results)
 
-    def test_status_callback_called(self, mock_clients):
+    def test_status_callback_called(self, mock_gemini, mock_env_vars):
         """Test status callback is called during processing."""
+        with patch.dict(os.environ, {"USE_CLAUDE": "false"}, clear=False):
+            from config.settings import refresh_settings
+            refresh_settings()
+
+            status_messages = []
+
+            def capture_status(msg):
+                status_messages.append(msg)
+
+            bar_raiser = BarRaiser(
+                gemini_client=mock_gemini,
+                claude_client=None,
+                status_callback=capture_status,
+            )
+
+            mock_gemini.generate_section_draft.return_value = GeminiResponse(
+                content="Draft", model="gemini-3-pro-preview", duration_ms=100, success=True
+            )
+            mock_gemini.critique_draft.return_value = (
+                {"passed": True, "feedback": "OK", "raw_response": "PASS"},
+                GeminiResponse(content="PASS", model="gemini-3-pro-preview", duration_ms=100, success=True),
+            )
+
+            bar_raiser.process_topic("Topic", "Context", 1)
+
+            assert len(status_messages) > 0
+            assert any("Worker 1" in msg for msg in status_messages)
+
+
+class TestBarRaiserHybridMode:
+    """Tests for BarRaiser in Hybrid (Gemini + Claude) mode."""
+
+    @pytest.fixture
+    def mock_clients(self, mock_env_vars):
+        """Create mock Gemini and Claude clients."""
+        gemini = MagicMock(spec=GeminiClient)
+        claude = MagicMock()
+        return gemini, claude
+
+    @pytest.fixture
+    def bar_raiser(self, mock_clients, mock_env_vars):
+        """Create a BarRaiser instance with both clients."""
+        with patch.dict(os.environ, {"USE_CLAUDE": "true"}, clear=False):
+            from config.settings import refresh_settings
+            refresh_settings()
+
+            gemini, claude = mock_clients
+            return BarRaiser(
+                gemini_client=gemini,
+                claude_client=claude,
+                status_callback=lambda x: None,
+            )
+
+    def test_uses_claude_for_critique_in_hybrid_mode(self, bar_raiser, mock_clients):
+        """Test that Claude is used for critique in hybrid mode."""
         gemini, claude = mock_clients
-        status_messages = []
 
-        def capture_status(msg):
-            status_messages.append(msg)
-
-        bar_raiser = BarRaiser(
-            gemini_client=gemini,
-            claude_client=claude,
-            status_callback=capture_status,
+        # Mock Gemini draft response
+        gemini.generate_section_draft.return_value = GeminiResponse(
+            content="Draft content",
+            model="gemini-3-pro-preview",
+            duration_ms=500,
+            success=True,
         )
+
+        # Create mock CritiqueResult-like object
+        mock_critique_result = MagicMock()
+        mock_critique_result.passed = True
+        mock_critique_result.feedback = "Approved"
+
+        # Mock ClaudeResponse-like object
+        mock_claude_response = MagicMock()
+        mock_claude_response.duration_ms = 300
+
+        claude.critique_draft.return_value = (mock_critique_result, mock_claude_response)
+
+        result = bar_raiser.process_topic(
+            topic="Test topic",
+            context="Context",
+            worker_id=1,
+        )
+
+        # Verify Claude was called for critique
+        claude.critique_draft.assert_called()
+        assert result.success is True
+
+    def test_hybrid_mode_strictness_passed_correctly(self, bar_raiser, mock_clients):
+        """Test that strictness is passed as CriticStrictness enum in hybrid mode."""
+        gemini, claude = mock_clients
 
         gemini.generate_section_draft.return_value = GeminiResponse(
-            content="Draft", model="gemini-3-pro-preview", duration_ms=100, success=True
+            content="Draft", model="gemini-3-pro-preview", duration_ms=500, success=True
         )
-        claude.critique_draft.return_value = (
-            CritiqueResult(passed=True, feedback="OK", raw_response="PASS"),
-            ClaudeResponse(content="PASS", model="claude-opus-4-5-20251101", duration_ms=100, success=True),
+        gemini.rewrite_section.return_value = GeminiResponse(
+            content="Rewritten", model="gemini-3-pro-preview", duration_ms=500, success=True
         )
 
-        bar_raiser.process_topic("Topic", "Context", 1)
+        # Track strictness levels
+        strictness_levels = []
 
-        assert len(status_messages) > 0
-        assert any("Worker 1" in msg for msg in status_messages)
+        def capture_strictness(draft, topic, strictness):
+            strictness_levels.append(strictness)
+            mock_result = MagicMock()
+            mock_result.passed = False
+            mock_result.feedback = "Fail"
+            mock_response = MagicMock()
+            mock_response.duration_ms = 100
+            return (mock_result, mock_response)
+
+        claude.critique_draft.side_effect = capture_strictness
+
+        bar_raiser.process_topic(
+            topic="Test topic",
+            context="Context",
+            worker_id=1,
+        )
+
+        # In hybrid mode, strictness is passed as CriticStrictness enum
+        # Default is LOW, which is already the lowest level
+        assert strictness_levels[0] == CriticStrictness.LOW
+        assert strictness_levels[1] == CriticStrictness.LOW
+        assert strictness_levels[2] == CriticStrictness.LOW

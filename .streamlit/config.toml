@@ -1,0 +1,14 @@
+[theme]
+# Professor Gemini - Refined Dark Theme (default)
+primaryColor = "#DAA520"
+backgroundColor = "#0f0f0f"
+secondaryBackgroundColor = "#1a1a1a"
+textColor = "#e8e8e8"
+font = "sans serif"
+
+[server]
+port = 8502
+headless = true
+
+[browser]
+gatherUsageStats = false

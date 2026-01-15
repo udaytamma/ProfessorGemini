@@ -1,5 +1,6 @@
 """Tests for core/pipeline.py."""
 
+import os
 from unittest.mock import MagicMock, patch
 from datetime import datetime
 
@@ -7,7 +8,6 @@ import pytest
 
 from core.pipeline import Pipeline, PipelineResult, PipelineStep
 from core.gemini_client import GeminiResponse
-from core.claude_client import ClaudeResponse
 from core.bar_raiser import BarRaiserResult
 
 
@@ -78,19 +78,41 @@ class TestPipeline:
     @pytest.fixture
     def mock_pipeline(self, mock_env_vars):
         """Create a pipeline with mocked clients."""
-        with patch("core.pipeline.GeminiClient") as mock_gemini:
-            with patch("core.pipeline.ClaudeClient") as mock_claude:
-                mock_gemini_instance = MagicMock()
-                mock_claude_instance = MagicMock()
+        # Set USE_CLAUDE to true for hybrid mode tests
+        with patch.dict(os.environ, {"USE_CLAUDE": "true"}, clear=False):
+            from config.settings import refresh_settings
+            refresh_settings()
 
+            with patch("core.pipeline.GeminiClient") as mock_gemini:
+                with patch("anthropic.Anthropic"):  # Mock Anthropic client
+                    mock_gemini_instance = MagicMock()
+                    mock_gemini.return_value = mock_gemini_instance
+
+                    # Import ClaudeClient after mocking
+                    from core.claude_client import ClaudeClient
+                    with patch.object(ClaudeClient, '__init__', lambda self: None):
+                        with patch.object(ClaudeClient, 'is_available', return_value=True):
+                            pipeline = Pipeline()
+
+                            # Store mocks for test access
+                            pipeline._gemini = mock_gemini_instance
+                            pipeline._claude = MagicMock()
+
+                            yield pipeline
+
+    @pytest.fixture
+    def mock_pipeline_gemini_only(self, mock_env_vars):
+        """Create a pipeline in Gemini-only mode."""
+        with patch.dict(os.environ, {"USE_CLAUDE": "false"}, clear=False):
+            from config.settings import refresh_settings
+            refresh_settings()
+
+            with patch("core.pipeline.GeminiClient") as mock_gemini:
+                mock_gemini_instance = MagicMock()
                 mock_gemini.return_value = mock_gemini_instance
-                mock_claude.return_value = mock_claude_instance
 
                 pipeline = Pipeline()
-
-                # Store mocks for test access
                 pipeline._gemini = mock_gemini_instance
-                pipeline._claude = mock_claude_instance
 
                 yield pipeline
 
@@ -124,6 +146,15 @@ class TestPipeline:
         assert ready is False
         assert "Claude" in message
 
+    def test_is_ready_gemini_only_mode(self, mock_pipeline_gemini_only):
+        """Test is_ready in Gemini-only mode."""
+        mock_pipeline_gemini_only._gemini.is_available.return_value = True
+
+        ready, message = mock_pipeline_gemini_only.is_ready()
+
+        assert ready is True
+        assert "Gemini-only" in message
+
     def test_execute_not_ready(self, mock_pipeline):
         """Test execute fails when not ready."""
         mock_pipeline._gemini.is_available.return_value = False
@@ -154,6 +185,8 @@ class TestPipeline:
 
     def test_execute_step2_failure(self, mock_pipeline):
         """Test execute handles Step 2 failure."""
+        from core.claude_client import ClaudeResponse
+
         mock_pipeline._gemini.is_available.return_value = True
         mock_pipeline._claude.is_available.return_value = True
 
@@ -184,6 +217,8 @@ class TestPipeline:
     @patch("core.pipeline.ThreadPoolExecutor")
     def test_execute_full_success(self, mock_executor, mock_bar_raiser, mock_pipeline):
         """Test successful full pipeline execution."""
+        from core.claude_client import ClaudeResponse
+
         mock_pipeline._gemini.is_available.return_value = True
         mock_pipeline._claude.is_available.return_value = True
 
@@ -246,12 +281,14 @@ class TestPipeline:
         assert result.success is True
         assert result.total_sections == 3
         assert result.low_confidence_sections == 1
-        assert "Master Guide" in result.master_guide
+        assert len(result.master_guide) > 0  # Local synthesis produces content
 
     @patch("core.pipeline.BarRaiser")
     @patch("core.pipeline.ThreadPoolExecutor")
     def test_execute_no_sections_to_synthesize(self, mock_executor, mock_bar_raiser, mock_pipeline):
         """Test execute when all deep dives fail."""
+        from core.claude_client import ClaudeResponse
+
         mock_pipeline._gemini.is_available.return_value = True
         mock_pipeline._claude.is_available.return_value = True
 
@@ -284,20 +321,131 @@ class TestPipeline:
         assert result.success is False
         assert "No sections to synthesize" in result.error
 
-    def test_status_callback_called(self, mock_pipeline):
+    def test_status_callback_called(self, mock_env_vars):
         """Test that status callback is called during execution."""
-        status_messages = []
+        with patch.dict(os.environ, {"USE_CLAUDE": "false"}, clear=False):
+            from config.settings import refresh_settings
+            refresh_settings()
 
-        def capture_status(msg):
-            status_messages.append(msg)
+            status_messages = []
 
-        mock_pipeline._status_callback = capture_status
-        mock_pipeline._gemini.is_available.return_value = False
-        mock_pipeline._claude.is_available.return_value = False
+            def capture_status(msg):
+                status_messages.append(msg)
 
-        mock_pipeline.execute("Test topic")
+            with patch("core.pipeline.GeminiClient") as mock_gemini:
+                mock_gemini_instance = MagicMock()
+                mock_gemini.return_value = mock_gemini_instance
+                mock_gemini_instance.is_available.return_value = True
 
-        assert len(status_messages) > 0
+                # Set up minimal mocks so pipeline can execute
+                mock_gemini_instance.generate_base_knowledge.return_value = GeminiResponse(
+                    content="Base",
+                    model="gemini-3-pro-preview",
+                    duration_ms=100,
+                    success=True,
+                )
+                mock_gemini_instance.split_into_topics.return_value = (
+                    [],  # Empty topics will cause early exit but status callback should still be called
+                    GeminiResponse(content="[]", model="gemini-3-pro-preview", duration_ms=100, success=True),
+                )
+
+                # Pass status_callback during construction
+                pipeline = Pipeline(status_callback=capture_status)
+                pipeline.execute("Test topic")
+
+                # Status callback should be called at least for steps 1 and 2
+                assert len(status_messages) > 0
+
+
+class TestPipelineGeminiOnly:
+    """Tests for Pipeline in Gemini-only mode."""
+
+    @pytest.fixture
+    def mock_pipeline(self, mock_env_vars):
+        """Create a pipeline in Gemini-only mode."""
+        with patch.dict(os.environ, {"USE_CLAUDE": "false"}, clear=False):
+            from config.settings import refresh_settings
+            refresh_settings()
+
+            with patch("core.pipeline.GeminiClient") as mock_gemini:
+                mock_gemini_instance = MagicMock()
+                mock_gemini.return_value = mock_gemini_instance
+
+                pipeline = Pipeline()
+                pipeline._gemini = mock_gemini_instance
+
+                yield pipeline
+
+    def test_is_ready_gemini_only(self, mock_pipeline):
+        """Test is_ready in Gemini-only mode."""
+        mock_pipeline._gemini.is_available.return_value = True
+
+        ready, message = mock_pipeline.is_ready()
+
+        assert ready is True
+        assert "Gemini-only" in message
+
+    @patch("core.pipeline.BarRaiser")
+    def test_execute_gemini_only_success(self, mock_bar_raiser, mock_pipeline):
+        """Test successful execution in Gemini-only mode."""
+        mock_pipeline._gemini.is_available.return_value = True
+
+        # Step 1: Base knowledge
+        mock_pipeline._gemini.generate_base_knowledge.return_value = GeminiResponse(
+            content="Base knowledge",
+            model="gemini-3-pro-preview",
+            duration_ms=1000,
+            success=True,
+        )
+
+        # Step 2: Split topics (Gemini)
+        mock_pipeline._gemini.split_into_topics.return_value = (
+            ["Topic 1", "Topic 2"],
+            GeminiResponse(
+                content='["Topic 1", "Topic 2"]',
+                model="gemini-3-pro-preview",
+                duration_ms=500,
+                success=True,
+            ),
+        )
+
+        # Step 3: Bar Raiser - mock the async method for Gemini-only mode
+        mock_bar_raiser_instance = MagicMock()
+
+        async def mock_process_topics_async(*args, **kwargs):
+            return [
+                BarRaiserResult(
+                    topic="Topic 1",
+                    final_content="Content 1",
+                    low_confidence=False,
+                    total_duration_ms=1000,
+                    success=True,
+                ),
+                BarRaiserResult(
+                    topic="Topic 2",
+                    final_content="Content 2",
+                    low_confidence=False,
+                    total_duration_ms=1000,
+                    success=True,
+                ),
+            ]
+
+        mock_bar_raiser_instance.process_topics_async = mock_process_topics_async
+        mock_bar_raiser.return_value = mock_bar_raiser_instance
+
+        # Step 4: Synthesis (Gemini)
+        mock_pipeline._gemini.synthesize_guide.return_value = GeminiResponse(
+            content="# Master Guide\n\nSynthesized content",
+            model="gemini-3-pro-preview",
+            duration_ms=2000,
+            success=True,
+        )
+
+        result = mock_pipeline.execute("Test topic")
+
+        assert result.success is True
+        assert result.total_sections == 2
+        assert len(result.master_guide) > 0  # Local synthesis produces content
 
 
 class TestPipelineIntegration:
@@ -305,10 +453,12 @@ class TestPipelineIntegration:
 
     def test_session_id_is_unique(self, mock_env_vars):
         """Test that each execution gets a unique session ID."""
-        with patch("core.pipeline.GeminiClient") as mock_gemini:
-            with patch("core.pipeline.ClaudeClient") as mock_claude:
+        with patch.dict(os.environ, {"USE_CLAUDE": "false"}, clear=False):
+            from config.settings import refresh_settings
+            refresh_settings()
+
+            with patch("core.pipeline.GeminiClient") as mock_gemini:
                 mock_gemini.return_value.is_available.return_value = False
-                mock_claude.return_value.is_available.return_value = False
 
                 pipeline = Pipeline()
 
@@ -319,16 +469,15 @@ class TestPipelineIntegration:
 
     def test_steps_are_recorded(self, mock_env_vars):
         """Test that pipeline steps are recorded in result."""
-        with patch("core.pipeline.GeminiClient") as mock_gemini:
-            with patch("core.pipeline.ClaudeClient") as mock_claude:
+        with patch.dict(os.environ, {"USE_CLAUDE": "false"}, clear=False):
+            from config.settings import refresh_settings
+            refresh_settings()
+
+            with patch("core.pipeline.GeminiClient") as mock_gemini:
                 mock_gemini_instance = MagicMock()
-                mock_claude_instance = MagicMock()
                 mock_gemini.return_value = mock_gemini_instance
-                mock_claude.return_value = mock_claude_instance
 
                 mock_gemini_instance.is_available.return_value = True
-                mock_claude_instance.is_available.return_value = True
-
                 mock_gemini_instance.generate_base_knowledge.return_value = GeminiResponse(
                     content="",
                     model="gemini-3-pro-preview",

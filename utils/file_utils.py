@@ -102,7 +102,19 @@ class FileManager:
             line = line.strip()
             if line.startswith("# "):
                 # H1 heading found
-                return line[2:].strip()
+                title = line[2:].strip()
+                # Remove common prefixes
+                prefixes_to_remove = [
+                    "The Principal TPM's Guide to ",
+                    "A Principal TPM's Guide to ",
+                    "Principal TPM's Guide to ",
+                    "Guide to ",
+                ]
+                for prefix in prefixes_to_remove:
+                    if title.startswith(prefix):
+                        title = title[len(prefix):]
+                        break
+                return title
 
         # Fallback to first non-empty line
         for line in lines:

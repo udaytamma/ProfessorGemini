@@ -48,9 +48,12 @@ class Settings(BaseSettings):
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-3-pro-preview")
 
-    # Claude Configuration
+    # Claude Configuration (optional - only used if use_claude=True)
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     claude_model: str = Field(default="claude-opus-4-5-20251101")
+
+    # Mode Selection: Use Claude for critique/synthesis or Gemini-only
+    use_claude: bool = Field(default=False, alias="USE_CLAUDE")
 
     # Cyrus Integration
     cyrus_root_path: str = Field(
@@ -59,10 +62,22 @@ class Settings(BaseSettings):
     )
 
     # Pipeline Configuration
-    default_strictness: CriticStrictness = Field(default=CriticStrictness.HIGH)
+    default_strictness: CriticStrictness = Field(default=CriticStrictness.LOW)
     max_workers: int = Field(default=10, ge=1, le=20)
     max_retries: int = Field(default=2, ge=1, le=5)
     api_timeout: int = Field(default=120, ge=30, le=300)
+
+    # Optimization Settings (to reduce Gemini API calls)
+    enable_critique: bool = Field(
+        default=False,
+        alias="ENABLE_CRITIQUE",
+        description="Enable Bar Raiser critique loop. When OFF, drafts are accepted without review.",
+    )
+    local_synthesis: bool = Field(
+        default=True,
+        alias="LOCAL_SYNTHESIS",
+        description="Use local synthesis (concatenate sections) instead of Gemini synthesis call.",
+    )
 
     # Logging Configuration
     log_retention_days: int = Field(default=30, ge=1, le=365)
@@ -102,12 +117,14 @@ class Settings(BaseSettings):
         return bool(self.anthropic_api_key)
 
     def is_fully_configured(self) -> bool:
-        """Check if all required APIs are configured.
+        """Check if all required APIs are configured based on mode.
 
         Returns:
-            True if both Gemini and Claude are configured.
+            True if required APIs are configured for the selected mode.
         """
-        return self.is_gemini_configured() and self.is_claude_configured()
+        if self.use_claude:
+            return self.is_gemini_configured() and self.is_claude_configured()
+        return self.is_gemini_configured()
 
     def get_gemini_responses_path(self) -> str:
         """Get the path to gemini-responses directory in Cyrus.

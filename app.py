@@ -7,10 +7,14 @@ Usage:
     streamlit run app.py --server.port 8502
 """
 
-import streamlit as st
+import atexit
+import tempfile
 from datetime import datetime
+from pathlib import Path
 
-from config.settings import get_settings, CriticStrictness
+import streamlit as st
+
+from config.settings import get_settings
 from core.pipeline import Pipeline
 from utils.logging_utils import RequestLogger, configure_logging
 from utils.file_utils import FileManager
@@ -20,13 +24,726 @@ from utils.file_utils import FileManager
 configure_logging()
 
 
+# ============== CUSTOM CSS ==============
+
+def inject_custom_css(theme: str = "dark") -> None:
+    """Inject custom CSS for professional styling."""
+
+    # Color schemes - Google-inspired clean design
+    if theme == "light":
+        colors = {
+            "bg_primary": "#ffffff",
+            "bg_secondary": "#f8f9fa",
+            "bg_tertiary": "#f1f3f4",
+            "bg_input": "#ffffff",
+            "text_primary": "#202124",
+            "text_secondary": "#5f6368",
+            "text_muted": "#9aa0a6",
+            "accent": "#b8860b",
+            "accent_hover": "#996f0a",
+            "accent_light": "#fef7e0",
+            "border": "#dadce0",
+            "border_light": "#e8eaed",
+            "success": "#1e8e3e",
+            "success_bg": "#e6f4ea",
+            "warning": "#f9ab00",
+            "error": "#d93025",
+            "console_bg": "#202124",
+            "console_text": "#e8eaed",
+        }
+    else:  # dark
+        colors = {
+            "bg_primary": "#0d0d0d",
+            "bg_secondary": "#1a1a1a",
+            "bg_tertiary": "#262626",
+            "bg_input": "#1a1a1a",
+            "text_primary": "#e8eaed",
+            "text_secondary": "#9aa0a6",
+            "text_muted": "#5f6368",
+            "accent": "#DAA520",
+            "accent_hover": "#e6b422",
+            "accent_light": "rgba(218, 165, 32, 0.15)",
+            "border": "#3c4043",
+            "border_light": "#5f6368",
+            "success": "#81c995",
+            "success_bg": "rgba(129, 201, 149, 0.15)",
+            "warning": "#fdd663",
+            "error": "#f28b82",
+            "console_bg": "#0d0d0d",
+            "console_text": "#e8eaed",
+        }
+
+    css = f"""
+    <style>
+        /* ===== IMPORTS ===== */
+        @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&family=Roboto+Mono:wght@400&display=swap');
+
+        /* ===== ROOT VARIABLES ===== */
+        :root {{
+            --bg-primary: {colors['bg_primary']};
+            --bg-secondary: {colors['bg_secondary']};
+            --bg-tertiary: {colors['bg_tertiary']};
+            --bg-input: {colors['bg_input']};
+            --text-primary: {colors['text_primary']};
+            --text-secondary: {colors['text_secondary']};
+            --text-muted: {colors['text_muted']};
+            --accent: {colors['accent']};
+            --accent-hover: {colors['accent_hover']};
+            --accent-light: {colors['accent_light']};
+            --border: {colors['border']};
+            --border-light: {colors['border_light']};
+            --success: {colors['success']};
+            --success-bg: {colors['success_bg']};
+            --warning: {colors['warning']};
+            --error: {colors['error']};
+            --console-bg: {colors['console_bg']};
+            --console-text: {colors['console_text']};
+            --font-display: 'Google Sans', 'Segoe UI', Roboto, sans-serif;
+            --font-body: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'Roboto Mono', 'SF Mono', Consolas, monospace;
+        }}
+
+        /* ===== BASE STYLES ===== */
+        html, body {{
+            font-size: 14px !important;
+        }}
+
+        .stApp {{
+            background: var(--bg-primary) !important;
+            font-family: var(--font-body) !important;
+        }}
+
+        [data-testid="stAppViewContainer"] {{
+            background: var(--bg-primary) !important;
+        }}
+
+        [data-testid="stHeader"] {{
+            background: transparent !important;
+        }}
+
+        /* ===== SIDEBAR ===== */
+        [data-testid="stSidebar"] {{
+            background: var(--bg-secondary) !important;
+            border-right: 1px solid var(--border) !important;
+        }}
+
+        [data-testid="stSidebar"] [data-testid="stMarkdown"] {{
+            color: var(--text-secondary) !important;
+        }}
+
+        [data-testid="stSidebar"] .stSelectbox label,
+        [data-testid="stSidebar"] .stTextInput label {{
+            color: var(--text-muted) !important;
+            font-size: 11px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.8px !important;
+            font-weight: 500 !important;
+        }}
+
+        /* ===== TYPOGRAPHY ===== */
+        h1, h2, h3, h4, h5, h6 {{
+            font-family: var(--font-display) !important;
+            color: var(--text-primary) !important;
+        }}
+
+        p, span, div {{
+            color: var(--text-primary);
+        }}
+
+        /* ===== PAGE HEADER ===== */
+        .page-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 0 20px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }}
+
+        .page-title-section {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+
+        .page-icon {{
+            font-size: 28px;
+        }}
+
+        .page-title {{
+            font-family: var(--font-display) !important;
+            font-size: 22px !important;
+            font-weight: 400 !important;
+            color: var(--text-primary) !important;
+            margin: 0 !important;
+            letter-spacing: 0;
+        }}
+
+        .page-subtitle {{
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }}
+
+        .header-actions {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+
+        /* ===== SECTION LABEL ===== */
+        .section-label {{
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }}
+
+        /* ===== INPUT CONTAINER ===== */
+        .input-container {{
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }}
+
+        /* ===== ACTION ROW ===== */
+        .action-row {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }}
+
+        .action-row-left {{
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }}
+
+        .action-row-right {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+
+        /* ===== STATUS PILL ===== */
+        .status-pill {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 500;
+        }}
+
+        .status-pill.ready {{
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }}
+
+        .status-pill.success {{
+            background: var(--success-bg);
+            color: var(--success);
+        }}
+
+        .status-pill-dot {{
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }}
+
+        /* ===== BUTTONS ===== */
+        .stButton > button {{
+            font-family: var(--font-display) !important;
+            font-weight: 500 !important;
+            font-size: 14px !important;
+            border-radius: 4px !important;
+            padding: 8px 24px !important;
+            transition: all 0.1s ease !important;
+            height: 36px !important;
+            min-height: 36px !important;
+            min-width: 80px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }}
+
+        .stButton > button[kind="primary"] {{
+            background: var(--accent) !important;
+            color: #000 !important;
+            border: none !important;
+        }}
+
+        .stButton > button[kind="primary"]:hover {{
+            background: var(--accent-hover) !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+        }}
+
+        .stButton > button[kind="secondary"] {{
+            background: transparent !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important;
+        }}
+
+        .stButton > button[kind="secondary"]:hover {{
+            background: var(--bg-tertiary) !important;
+        }}
+
+        .stButton > button:disabled {{
+            opacity: 0.38 !important;
+            cursor: not-allowed !important;
+        }}
+
+        /* ===== TEXT AREA ===== */
+        .stTextArea {{
+            margin-bottom: 0 !important;
+        }}
+
+        .stTextArea label {{
+            display: none !important;
+        }}
+
+        .stTextArea textarea {{
+            font-family: var(--font-body) !important;
+            font-size: 14px !important;
+            background: var(--bg-input) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 4px !important;
+            color: var(--text-primary) !important;
+            padding: 12px 16px !important;
+            min-height: 120px !important;
+            resize: vertical !important;
+            line-height: 1.5 !important;
+        }}
+
+        .stTextArea textarea:focus {{
+            border-color: var(--accent) !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }}
+
+        .stTextArea textarea::placeholder {{
+            color: var(--text-muted) !important;
+        }}
+
+        /* ===== TEXT INPUT ===== */
+        .stTextInput input {{
+            font-family: var(--font-body) !important;
+            font-size: 14px !important;
+            background: var(--bg-input) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 4px !important;
+            color: var(--text-primary) !important;
+            padding: 8px 12px !important;
+        }}
+
+        .stTextInput input:focus {{
+            border-color: var(--accent) !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }}
+
+        /* ===== OUTPUT SECTION ===== */
+        .output-label {{
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }}
+
+        /* ===== EXPANDER ===== */
+        [data-testid="stExpander"] {{
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 8px !important;
+            overflow: hidden;
+        }}
+
+        [data-testid="stExpander"] > details {{
+            background: var(--bg-secondary) !important;
+        }}
+
+        [data-testid="stExpander"] > details > summary {{
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            padding: 16px 20px !important;
+            font-family: var(--font-display) !important;
+            font-weight: 500 !important;
+            font-size: 14px !important;
+        }}
+
+        [data-testid="stExpander"] > details > summary:hover {{
+            background: var(--bg-tertiary) !important;
+        }}
+
+        [data-testid="stExpander"] > details > summary span {{
+            color: var(--text-primary) !important;
+        }}
+
+        [data-testid="stExpander"] > details > div {{
+            background: var(--bg-secondary) !important;
+            padding: 0 20px 20px 20px !important;
+        }}
+
+        /* Text inside expanders */
+        [data-testid="stExpander"] p,
+        [data-testid="stExpander"] span,
+        [data-testid="stExpander"] li,
+        [data-testid="stExpander"] td,
+        [data-testid="stExpander"] th {{
+            color: var(--text-primary) !important;
+            font-size: 14px !important;
+            line-height: 1.6 !important;
+        }}
+
+        /* Headings inside expanders */
+        [data-testid="stExpander"] h1 {{
+            font-size: 24px !important;
+            font-weight: 400 !important;
+            margin-top: 24px !important;
+            margin-bottom: 12px !important;
+        }}
+
+        [data-testid="stExpander"] h2 {{
+            font-size: 18px !important;
+            font-weight: 500 !important;
+            margin-top: 24px !important;
+            margin-bottom: 8px !important;
+            padding-bottom: 8px !important;
+            border-bottom: 1px solid var(--border) !important;
+        }}
+
+        [data-testid="stExpander"] h3 {{
+            font-size: 16px !important;
+            font-weight: 500 !important;
+            margin-top: 20px !important;
+            margin-bottom: 8px !important;
+        }}
+
+        [data-testid="stExpander"] h1,
+        [data-testid="stExpander"] h2,
+        [data-testid="stExpander"] h3,
+        [data-testid="stExpander"] h4,
+        [data-testid="stExpander"] h5,
+        [data-testid="stExpander"] h6 {{
+            color: var(--text-primary) !important;
+        }}
+
+        /* Code inside expanders */
+        [data-testid="stExpander"] code {{
+            background: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            font-family: var(--font-mono) !important;
+            font-size: 13px !important;
+        }}
+
+        [data-testid="stExpander"] pre {{
+            background: var(--console-bg) !important;
+            color: var(--console-text) !important;
+            padding: 16px !important;
+            border-radius: 8px !important;
+            overflow-x: auto !important;
+            margin: 16px 0 !important;
+        }}
+
+        [data-testid="stExpander"] pre code {{
+            background: transparent !important;
+            color: var(--console-text) !important;
+            padding: 0 !important;
+        }}
+
+        /* Lists inside expanders */
+        [data-testid="stExpander"] ul,
+        [data-testid="stExpander"] ol {{
+            color: var(--text-primary) !important;
+            padding-left: 24px !important;
+            margin: 12px 0 !important;
+        }}
+
+        [data-testid="stExpander"] li {{
+            margin-bottom: 6px !important;
+        }}
+
+        /* Tables inside expanders */
+        [data-testid="stExpander"] table {{
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin: 16px 0 !important;
+        }}
+
+        [data-testid="stExpander"] table th {{
+            background: var(--bg-tertiary) !important;
+            border: 1px solid var(--border) !important;
+            padding: 10px 14px !important;
+            text-align: left !important;
+            font-weight: 500 !important;
+        }}
+
+        [data-testid="stExpander"] table td {{
+            border: 1px solid var(--border) !important;
+            padding: 10px 14px !important;
+        }}
+
+        /* Blockquotes */
+        [data-testid="stExpander"] blockquote {{
+            border-left: 4px solid var(--accent) !important;
+            padding-left: 16px !important;
+            margin: 16px 0 !important;
+            color: var(--text-secondary) !important;
+        }}
+
+        /* Links */
+        [data-testid="stExpander"] a {{
+            color: var(--accent) !important;
+            text-decoration: none !important;
+        }}
+
+        [data-testid="stExpander"] a:hover {{
+            text-decoration: underline !important;
+        }}
+
+        /* Strong text */
+        [data-testid="stExpander"] strong,
+        [data-testid="stExpander"] b {{
+            color: var(--text-primary) !important;
+            font-weight: 500 !important;
+        }}
+
+        /* HR */
+        [data-testid="stExpander"] hr {{
+            border: none !important;
+            border-top: 1px solid var(--border) !important;
+            margin: 24px 0 !important;
+        }}
+
+        /* ===== DIVIDER ===== */
+        hr {{
+            border: none !important;
+            border-top: 1px solid var(--border) !important;
+            margin: 16px 0 !important;
+        }}
+
+        /* ===== ALERTS ===== */
+        [data-testid="stAlert"] {{
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 4px !important;
+        }}
+
+        [data-testid="stAlert"] p {{
+            color: var(--text-primary) !important;
+        }}
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {{
+            width: 8px;
+            height: 8px;
+        }}
+
+        ::-webkit-scrollbar-track {{
+            background: transparent;
+        }}
+
+        ::-webkit-scrollbar-thumb {{
+            background: var(--border);
+            border-radius: 4px;
+        }}
+
+        ::-webkit-scrollbar-thumb:hover {{
+            background: var(--text-muted);
+        }}
+
+        /* ===== HIDE STREAMLIT BRANDING ===== */
+        #MainMenu {{ visibility: hidden; }}
+        footer {{ visibility: hidden; }}
+        [data-testid="stDecoration"] {{ display: none; }}
+
+        /* ===== SIDEBAR COLLAPSE BUTTON ===== */
+        [data-testid="stSidebarCollapsedControl"] button,
+        [data-testid="stSidebarNavCollapseIcon"],
+        button[kind="header"] {{
+            color: var(--text-secondary) !important;
+        }}
+
+        [data-testid="stSidebarCollapsedControl"] svg,
+        [data-testid="collapsedControl"] svg {{
+            color: var(--text-secondary) !important;
+            stroke: var(--text-secondary) !important;
+        }}
+
+        /* Sidebar expand/collapse arrow */
+        [data-testid="stSidebar"] button[kind="headerNoPadding"],
+        [data-testid="stSidebar"] [data-testid="stSidebarNavCollapseIcon"],
+        [data-testid="baseButton-headerNoPadding"] {{
+            color: var(--text-secondary) !important;
+        }}
+
+        [data-testid="baseButton-headerNoPadding"] svg {{
+            color: var(--text-secondary) !important;
+        }}
+
+        /* ===== THEME TOGGLE ===== */
+        [data-testid="stButton"][data-key="theme_toggle"] button {{
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border) !important;
+            padding: 0 !important;
+            font-size: 16px !important;
+            width: 36px !important;
+            min-width: 36px !important;
+            height: 36px !important;
+            border-radius: 4px !important;
+        }}
+
+        [data-testid="stButton"][data-key="theme_toggle"] button:hover {{
+            background: var(--bg-tertiary) !important;
+        }}
+
+        /* ===== SAVE BUTTON (TOP) ===== */
+        [data-testid="stButton"][data-key="save_top"] button {{
+            height: 36px !important;
+            min-height: 36px !important;
+        }}
+
+        /* ===== STATUS INDICATORS ===== */
+        .status-indicator {{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }}
+
+        .status-indicator .dot {{
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }}
+
+        .status-indicator .dot.connected {{ background: var(--success); }}
+        .status-indicator .dot.disconnected {{ background: var(--error); }}
+
+        /* ===== TOAST ===== */
+        [data-testid="stToast"] {{
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 4px !important;
+        }}
+
+        /* ===== SPINNER ===== */
+        .stSpinner > div {{
+            border-top-color: var(--accent) !important;
+        }}
+
+        /* ===== MARKDOWN ===== */
+        .stMarkdown, .stMarkdown p, .stMarkdown span,
+        [data-testid="stMarkdownContainer"],
+        [data-testid="stMarkdownContainer"] p {{
+            color: var(--text-primary) !important;
+        }}
+
+        /* Sidebar */
+        [data-testid="stSidebar"] .stMarkdown,
+        [data-testid="stSidebar"] .stMarkdown p,
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] code {{
+            color: var(--text-secondary) !important;
+        }}
+
+        [data-testid="stSidebar"] code {{
+            background: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+            font-size: 12px !important;
+        }}
+
+        [data-testid="stSidebar"] .stTextInput input {{
+            background: var(--bg-input) !important;
+            border-color: var(--border) !important;
+            color: var(--text-primary) !important;
+        }}
+
+        /* Labels */
+        .stTextInput label, .stTextArea label, .stSelectbox label {{
+            color: var(--text-muted) !important;
+        }}
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {{
+            text-align: center;
+            padding: 48px 24px;
+        }}
+
+        .empty-state-icon {{
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }}
+
+        .empty-state-text {{
+            font-size: 14px;
+            color: var(--text-muted);
+        }}
+
+        /* ===== FOOTER ===== */
+        .app-footer {{
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }}
+
+        /* ===== COLUMN SPACING ===== */
+        [data-testid="stHorizontalBlock"] {{
+            gap: 8px !important;
+            flex-wrap: nowrap !important;
+        }}
+
+        [data-testid="column"] {{
+            padding: 0 !important;
+            min-width: 0 !important;
+        }}
+
+        /* Ensure action row buttons don't shrink too small */
+        [data-testid="stHorizontalBlock"] [data-testid="column"]:has([data-testid="stButton"]) {{
+            min-width: 80px !important;
+            flex-shrink: 0 !important;
+        }}
+
+        /* ===== SELECT BOX ===== */
+        .stSelectbox [data-baseweb="select"] {{
+            background: var(--bg-input) !important;
+        }}
+
+        .stSelectbox [data-baseweb="select"] > div {{
+            background: var(--bg-input) !important;
+            border-color: var(--border) !important;
+            border-radius: 4px !important;
+        }}
+    </style>
+    """
+
+    st.markdown(css, unsafe_allow_html=True)
+
+
+# ============== SESSION STATE ==============
+
 def init_session_state() -> None:
     """Initialize Streamlit session state variables."""
     defaults = {
         "pipeline_result": None,
-        "status_messages": [],
-        "is_running": False,
         "cyrus_root": get_settings().cyrus_root_path,
+        "timer_elapsed": None,
+        "topic_input": "",
+        "theme": "dark",
     }
 
     for key, value in defaults.items():
@@ -34,40 +751,40 @@ def init_session_state() -> None:
             st.session_state[key] = value
 
 
-def add_status_message(message: str) -> None:
-    """Add a status message to the session state.
-
-    Args:
-        message: Status message to add.
-    """
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    st.session_state.status_messages.append(f"[{timestamp}] {message}")
-
+# ============== COMPONENTS ==============
 
 def render_sidebar() -> None:
     """Render the sidebar with configuration options."""
     settings = get_settings()
 
-    st.sidebar.title("Professor Gemini")
-    st.sidebar.markdown("*Hybrid AI Learning Platform*")
+    st.sidebar.markdown("### Status")
 
-    st.sidebar.divider()
+    gemini_ok = settings.is_gemini_configured()
+    claude_ok = settings.is_claude_configured()
 
-    # API Status
-    st.sidebar.subheader("API Status")
+    st.sidebar.markdown(
+        f"""
+        <div class="status-indicator">
+            <span class="dot {'connected' if gemini_ok else 'disconnected'}"></span>
+            <span>Gemini {'Connected' if gemini_ok else 'Not Configured'}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    gemini_status = "Connected" if settings.is_gemini_configured() else "Not Configured"
-    gemini_color = "green" if settings.is_gemini_configured() else "red"
-    st.sidebar.markdown(f":{gemini_color}[●] **Gemini:** {gemini_status}")
+    st.sidebar.markdown(
+        f"""
+        <div class="status-indicator">
+            <span class="dot {'connected' if claude_ok else 'disconnected'}"></span>
+            <span>Claude {'Connected' if claude_ok else 'Not Configured'}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    claude_status = "Connected" if settings.is_claude_configured() else "Not Configured"
-    claude_color = "green" if settings.is_claude_configured() else "red"
-    st.sidebar.markdown(f":{claude_color}[●] **Claude:** {claude_status}")
+    st.sidebar.markdown("---")
 
-    st.sidebar.divider()
-
-    # Configuration
-    st.sidebar.subheader("Configuration")
+    st.sidebar.markdown("### Configuration")
 
     cyrus_root = st.sidebar.text_input(
         "Cyrus Root Path",
@@ -76,61 +793,25 @@ def render_sidebar() -> None:
     )
     st.session_state.cyrus_root = cyrus_root
 
-    # File manager check
     file_manager = FileManager(cyrus_root)
-    cyrus_available, cyrus_msg = file_manager.is_cyrus_available()
+    cyrus_available, _ = file_manager.is_cyrus_available()
+
     if cyrus_available:
-        st.sidebar.markdown(":green[✓] Cyrus project accessible")
-    else:
-        st.sidebar.markdown(f":orange[⚠] {cyrus_msg}")
+        st.sidebar.markdown(
+            '<div class="status-indicator"><span class="dot connected"></span><span>Cyrus accessible</span></div>',
+            unsafe_allow_html=True,
+        )
 
-    st.sidebar.divider()
+    st.sidebar.markdown("---")
 
-    # Critic Strictness Info
-    st.sidebar.subheader("Critic Strictness")
-    st.sidebar.markdown("""
-    - **Attempts 1-2:** HIGH strictness
-    - **Attempt 3:** MEDIUM strictness (relaxed)
-    - After 3 attempts: Accept with low confidence flag
-    """)
+    st.sidebar.markdown("### Settings")
+    st.sidebar.markdown(f"Critique: `{'ON' if settings.enable_critique else 'OFF'}`")
+    st.sidebar.markdown(f"Local Synthesis: `{'ON' if settings.local_synthesis else 'OFF'}`")
 
-    st.sidebar.divider()
+    st.sidebar.markdown("---")
 
-    # Model Info
-    st.sidebar.subheader("Models")
-    st.sidebar.markdown(f"**Gemini:** `{settings.gemini_model}`")
-    st.sidebar.markdown(f"**Claude:** `{settings.claude_model}`")
-
-    st.sidebar.divider()
-
-    # Settings Info
-    st.sidebar.subheader("Settings")
-    st.sidebar.markdown(f"Max Workers: `{settings.max_workers}`")
-    st.sidebar.markdown(f"Max Retries: `{settings.max_retries}`")
-    st.sidebar.markdown(f"API Timeout: `{settings.api_timeout}s`")
-
-
-def render_status_console() -> None:
-    """Render the status console with real-time updates."""
-    st.subheader("Status Console")
-
-    # Create scrollable container for status messages
-    status_container = st.container(height=300)
-
-    with status_container:
-        if st.session_state.status_messages:
-            for msg in st.session_state.status_messages:
-                # Color code based on content
-                if "APPROVED" in msg or "complete" in msg.lower():
-                    st.markdown(f":green[{msg}]")
-                elif "REJECTED" in msg or "FAIL" in msg:
-                    st.markdown(f":orange[{msg}]")
-                elif "failed" in msg.lower() or "error" in msg.lower():
-                    st.markdown(f":red[{msg}]")
-                else:
-                    st.markdown(f"`{msg}`")
-        else:
-            st.markdown("*Waiting for pipeline execution...*")
+    st.sidebar.markdown("### Model")
+    st.sidebar.code(settings.gemini_model, language=None)
 
 
 def render_output_section() -> None:
@@ -138,121 +819,47 @@ def render_output_section() -> None:
     result = st.session_state.pipeline_result
 
     if not result:
-        st.info("Run the pipeline to generate a Master Guide")
+        st.markdown(
+            """
+            <div class="empty-state">
+                <div class="empty-state-icon">📚</div>
+                <div class="empty-state-text">Enter a topic above to generate a comprehensive guide</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     if not result.success:
         st.error(f"Pipeline failed: {result.error}")
         return
 
-    # Success header with metrics
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total Sections", result.total_sections)
-    with col2:
-        st.metric("Low Confidence", result.low_confidence_sections)
-    with col3:
-        st.metric("Duration", f"{result.total_duration_ms / 1000:.1f}s")
-    with col4:
-        st.metric("Session", result.session_id[:8])
-
-    st.divider()
-
-    # Low confidence warning
     if result.low_confidence_sections > 0:
         st.warning(
-            f"⚠️ **Review Recommended:** {result.low_confidence_sections} section(s) "
-            "did not pass the Bar Raiser review after 3 attempts. These sections are "
-            "marked with an orange indicator in the guide below."
+            f"**Review Recommended:** {result.low_confidence_sections} section(s) "
+            "did not pass the Bar Raiser review after maximum attempts."
         )
 
-    # Master Guide content
-    st.subheader("Master Guide")
+    st.markdown('<div class="output-label">Generated Guide</div>', unsafe_allow_html=True)
 
-    # Add low confidence markers to content
-    display_content = result.master_guide
-
-    # Display in expandable markdown
     with st.expander("View Full Guide", expanded=True):
-        st.markdown(display_content)
-
-    st.divider()
-
-    # Add to Nebula button
-    st.subheader("Save to Cyrus")
-
-    col1, col2 = st.columns([1, 3])
-
-    with col1:
-        if st.button("📁 Add to Nebula", type="primary", use_container_width=True):
-            file_manager = FileManager(st.session_state.cyrus_root)
-            success, filepath, message = file_manager.save_guide(
-                content=result.master_guide,
-                low_confidence_count=result.low_confidence_sections,
-            )
-
-            if success:
-                st.success(f"✓ {message}")
-                st.code(filepath, language=None)
-
-                # Log the session
-                logger = RequestLogger()
-                logger.log_session(result)
-            else:
-                st.error(f"Failed: {message}")
-
-    with col2:
-        st.markdown(
-            f"Saves to: `{st.session_state.cyrus_root}/gemini-responses/`"
-        )
-
-
-def render_deep_dive_details() -> None:
-    """Render detailed deep dive results in an expander."""
-    result = st.session_state.pipeline_result
-
-    if not result or not result.deep_dive_results:
-        return
-
-    with st.expander("Deep Dive Details", expanded=False):
-        for i, dive in enumerate(result.deep_dive_results, 1):
-            status_icon = "🟢" if not dive.low_confidence else "🟠"
-
-            st.markdown(f"### {status_icon} Topic {i}: {dive.topic[:60]}...")
-
-            if dive.attempts:
-                cols = st.columns(len(dive.attempts))
-                for j, (col, attempt) in enumerate(zip(cols, dive.attempts)):
-                    with col:
-                        result_icon = "✓" if attempt.critique_passed else "✗"
-                        st.markdown(f"**Attempt {attempt.attempt_number}** {result_icon}")
-                        st.markdown(f"Strictness: `{attempt.strictness.value}`")
-                        st.markdown(f"Draft: `{attempt.draft_duration_ms}ms`")
-                        st.markdown(f"Critique: `{attempt.critique_duration_ms}ms`")
-
-                        if not attempt.critique_passed:
-                            with st.popover("View Feedback"):
-                                st.markdown(attempt.critique_feedback)
-
-            st.divider()
+        st.markdown(result.master_guide)
 
 
 def run_pipeline(topic: str) -> None:
-    """Execute the pipeline for a given topic.
+    """Execute the pipeline for a given topic."""
+    start_time = datetime.now()
 
-    Args:
-        topic: Topic to process.
-    """
-    st.session_state.is_running = True
-    st.session_state.status_messages = []
-    st.session_state.pipeline_result = None
-
-    pipeline = Pipeline(status_callback=add_status_message)
+    pipeline = Pipeline()
     result = pipeline.execute(topic)
 
-    st.session_state.pipeline_result = result
-    st.session_state.is_running = False
+    elapsed = (datetime.now() - start_time).total_seconds()
 
+    st.session_state.timer_elapsed = elapsed
+    st.session_state.pipeline_result = result
+
+
+# ============== MAIN ==============
 
 def main() -> None:
     """Main application entry point."""
@@ -260,91 +867,139 @@ def main() -> None:
         page_title="Professor Gemini",
         page_icon="🎓",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state="collapsed",
     )
 
     init_session_state()
+
+    theme = st.session_state.theme
+    if theme == "system":
+        theme = "dark"
+    inject_custom_css(theme)
+
     render_sidebar()
 
-    # Main content area
-    st.title("🎓 Professor Gemini")
-    st.markdown("*Deep learning with hybrid AI: Gemini generates, Claude critiques*")
+    # ===== PAGE HEADER =====
+    header_left, header_right = st.columns([5, 1])
 
-    st.divider()
+    with header_left:
+        st.markdown(
+            """
+            <div class="page-title-section">
+                <span class="page-icon">🎓</span>
+                <div>
+                    <div class="page-title">Professor Gemini</div>
+                    <div class="page-subtitle">Deep learning with hybrid AI</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    # Check API configuration
+    with header_right:
+        # Save button and theme toggle in top right
+        col_save, col_theme = st.columns([2, 1])
+
+        with col_save:
+            result = st.session_state.pipeline_result
+            save_disabled = not (result and result.success)
+            if st.button("Save", disabled=save_disabled, use_container_width=True, key="save_top"):
+                if result and result.success:
+                    file_manager = FileManager(st.session_state.cyrus_root)
+                    success, filepath, message = file_manager.save_guide(
+                        content=result.master_guide,
+                        low_confidence_count=result.low_confidence_sections,
+                    )
+                    if success:
+                        st.toast(f"Saved: {filepath.split('/')[-1]}", icon="✅")
+                        RequestLogger().log_session(result)
+                    else:
+                        st.toast(f"Failed: {message}", icon="🚫")
+
+        with col_theme:
+            current_theme = st.session_state.theme
+            theme_icon = "🌙" if current_theme == "dark" else "☀️" if current_theme == "light" else "💻"
+            next_theme = {"dark": "light", "light": "system", "system": "dark"}
+
+            if st.button(theme_icon, key="theme_toggle", help=f"Theme: {current_theme.title()}"):
+                st.session_state.theme = next_theme[current_theme]
+                st.rerun()
+
+    st.markdown("---")
+
+    # ===== API CHECK =====
     settings = get_settings()
     if not settings.is_fully_configured():
         st.error(
-            "⚠️ **API Keys Required**\n\n"
-            "Please configure your API keys in the `.env` file:\n"
-            "- `GEMINI_API_KEY`: Your Google Gemini API key\n"
-            "- `ANTHROPIC_API_KEY`: Your Anthropic Claude API key"
+            "**API Keys Required**\n\n"
+            "Configure your API keys in `.env`:\n"
+            "- `GEMINI_API_KEY`\n"
+            "- `ANTHROPIC_API_KEY` (if USE_CLAUDE=true)"
         )
         st.stop()
 
-    # Two-column layout
-    left_col, right_col = st.columns([1, 1])
+    # ===== INPUT SECTION =====
+    st.markdown('<div class="section-label">Topic</div>', unsafe_allow_html=True)
 
-    with left_col:
-        st.subheader("Input")
+    topic = st.text_area(
+        "Topic",
+        height=120,
+        placeholder="Enter a topic to explore...\n\nExamples:\n• Distributed consensus algorithms\n• Kubernetes architecture\n• Real-time data streaming",
+        key="topic_input",
+        label_visibility="collapsed",
+    )
 
-        topic = st.text_area(
-            "Enter topic for deep dive",
-            height=200,
-            placeholder=(
-                "Enter a topic you want to learn about...\n\n"
-                "Examples:\n"
-                "- Distributed consensus algorithms\n"
-                "- Kubernetes architecture and orchestration\n"
-                "- Real-time data streaming pipelines\n"
-                "- API gateway design patterns"
-            ),
-        )
+    # ===== ACTION ROW =====
+    st.markdown("<div style='height: 16px'></div>", unsafe_allow_html=True)
 
-        col1, col2 = st.columns([1, 1])
+    col1, col2, col3, col4 = st.columns([4, 2, 1, 1])
 
-        with col1:
-            start_button = st.button(
-                "🚀 Start Deep Dive",
-                type="primary",
-                disabled=st.session_state.is_running or not topic.strip(),
-                use_container_width=True,
+    with col1:
+        # Status indicator
+        if st.session_state.timer_elapsed is not None:
+            elapsed = st.session_state.timer_elapsed
+            minutes = int(elapsed // 60)
+            seconds = elapsed % 60
+            timer_text = f"{minutes}m {seconds:.1f}s" if minutes > 0 else f"{seconds:.1f}s"
+            st.markdown(
+                f'<div class="status-pill success"><span class="status-pill-dot"></span>Completed in {timer_text}</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="status-pill ready"><span class="status-pill-dot"></span>Ready</div>',
+                unsafe_allow_html=True,
             )
 
-        with col2:
-            if st.button(
-                "🗑️ Clear",
-                disabled=st.session_state.is_running,
-                use_container_width=True,
-            ):
-                st.session_state.status_messages = []
-                st.session_state.pipeline_result = None
-                st.rerun()
+    with col3:
+        start_clicked = st.button(
+            "Generate",
+            type="primary",
+            disabled=not topic.strip(),
+            use_container_width=True,
+        )
 
-        if start_button and topic.strip():
-            with st.spinner("Pipeline running..."):
-                run_pipeline(topic.strip())
+    with col4:
+        if st.button("Clear", use_container_width=True):
+            st.session_state.pipeline_result = None
+            st.session_state.timer_elapsed = None
+            st.session_state.topic_input = ""
             st.rerun()
 
-    with right_col:
-        render_status_console()
+    # ===== EXECUTION =====
+    if start_clicked and topic.strip():
+        with st.spinner("Generating guide..."):
+            run_pipeline(topic.strip())
+        st.rerun()
 
-    st.divider()
+    st.markdown("---")
 
-    # Output section
+    # ===== OUTPUT =====
     render_output_section()
 
-    # Deep dive details
-    render_deep_dive_details()
-
-    # Footer
-    st.divider()
+    # ===== FOOTER =====
     st.markdown(
-        "<div style='text-align: center; color: gray;'>"
-        "Professor Gemini | Hybrid AI Learning Platform | "
-        f"Port {settings.app_port}"
-        "</div>",
+        '<div class="app-footer">Professor Gemini</div>',
         unsafe_allow_html=True,
     )
 
