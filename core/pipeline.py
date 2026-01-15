@@ -435,49 +435,91 @@ class Pipeline:
         section_content: dict[str, str],
         context: str,
     ) -> list[BarRaiserResult]:
-        """Generate deep dives using pre-extracted section content.
+        """Generate deep dives by calling Gemini for each section topic.
 
-        When local Roman numeral split succeeded, we already have content
-        for each section. We can either:
-        - Use it directly (fastest, 0 API calls)
-        - Generate enhanced drafts with Gemini (better quality, N API calls)
-
-        Currently: Uses pre-extracted content directly for maximum efficiency.
+        For each topic extracted from the Roman numeral split, we call Gemini
+        to generate a comprehensive deep-dive with interview questions.
+        Results maintain the same order as the input topics list.
 
         Args:
             topics: List of topic titles from split.
-            section_content: Map of topic title to section content.
+            section_content: Map of topic title to section content (used as additional context).
             context: Full base knowledge content for reference.
 
         Returns:
-            List of BarRaiserResult with section content.
+            List of BarRaiserResult with section content, in same order as topics.
         """
-        results = []
+        # Use asyncio for parallel Gemini calls (more efficient for I/O)
+        return asyncio.run(self._generate_deep_dives_async(topics, section_content, context))
 
-        for topic in topics:
-            content = section_content.get(topic, "")
+    async def _generate_deep_dives_async(
+        self,
+        topics: list[str],
+        section_content: dict[str, str],
+        context: str,
+    ) -> list[BarRaiserResult]:
+        """Async implementation of deep dive generation.
 
-            if content:
-                # Use pre-extracted content directly (no API call)
-                results.append(BarRaiserResult(
+        Calls Gemini in parallel for all topics using asyncio.
+
+        Args:
+            topics: List of topic titles.
+            section_content: Pre-extracted content for additional context.
+            context: Full base knowledge.
+
+        Returns:
+            List of BarRaiserResult in same order as topics.
+        """
+        import time
+
+        async def process_single_topic(topic: str, worker_id: int) -> BarRaiserResult:
+            """Process a single topic with Gemini."""
+            start_time = time.time()
+
+            # Include pre-extracted content as additional context if available
+            topic_context = section_content.get(topic, "")
+            full_context = f"{context}\n\nPrevious outline for this section:\n{topic_context}" if topic_context else context
+
+            self._log_status(f"Worker {worker_id}: Generating deep-dive for '{topic[:40]}...'")
+
+            # Call Gemini for deep dive
+            response = await self._gemini.generate_section_draft_async(
+                topic=topic,
+                context=full_context[:3000],  # Limit context size
+                feedback="",
+            )
+
+            duration_ms = int((time.time() - start_time) * 1000)
+
+            if response.success and response.content:
+                self._log_status(f"Worker {worker_id}: Completed '{topic[:40]}...'")
+                return BarRaiserResult(
                     topic=topic,
-                    final_content=content,
-                    low_confidence=False,  # Content from base knowledge is trusted
+                    final_content=response.content,
+                    low_confidence=False,
                     attempts=[],
-                    total_duration_ms=0,
+                    total_duration_ms=duration_ms,
                     success=True,
-                ))
+                )
             else:
-                # Missing content - mark as failed
-                logger.warning(f"No content found for topic: {topic}")
-                results.append(BarRaiserResult(
+                self._log_status(f"Worker {worker_id}: Failed '{topic[:40]}...' - {response.error}")
+                return BarRaiserResult(
                     topic=topic,
                     final_content="",
                     low_confidence=True,
                     attempts=[],
-                    total_duration_ms=0,
+                    total_duration_ms=duration_ms,
                     success=False,
-                    error=f"No content extracted for topic: {topic}",
-                ))
+                    error=response.error or "Empty response from Gemini",
+                )
 
-        return results
+        # Create tasks for all topics (maintaining order)
+        tasks = [
+            process_single_topic(topic, i + 1)
+            for i, topic in enumerate(topics)
+        ]
+
+        # Run all in parallel and collect results (order is preserved)
+        results = await asyncio.gather(*tasks)
+
+        return list(results)

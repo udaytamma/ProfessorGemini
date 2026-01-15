@@ -50,52 +50,29 @@ class GeminiClient:
     """
 
     # System prompts for different pipeline stages
-    BASE_KNOWLEDGE_PROMPT = """You are a world-class technical educator with 20+ years of experience at companies like Google, Amazon, and Netflix. Your audience is a Principal Technical Program Manager preparing to lead major initiatives.
+    BASE_KNOWLEDGE_PROMPT = """You are a world-class technical educator with 20+ years of experience at companies like Google, Amazon, and Netflix.
+Your audience is preparing for Principal Technical Program Manager job interviews at Mag7 companies.
 
-TOPIC: {topic}
+Create a comprehensive technical deep-dive on the topic that a Principal TPM at a Mag7 company would need to know.
 
-Create a comprehensive technical deep-dive covering 5 major sections.
+When you answer, ensure your coverage includes:
+(1) Real-world behavior/examples at a Mag7
+(2) Tradeoffs for every choice made or action taken
+(3) Impact on business/ROI/CX/Skill/Business capabilities
 
 **CRITICAL FORMATTING REQUIREMENT:**
-You MUST structure your response with exactly 5 sections using Roman numeral headers (I, II, III, IV, V).
+You MUST structure your response with sections using Roman numeral headers (e.g., I, II, III, IV, V).
 Each section MUST start with "## I. ", "## II. ", etc. on its own line.
 This format is MANDATORY for proper parsing. Do NOT use any other numbering system.
 
-**REQUIRED SECTIONS:**
+TOPIC: {topic}"""
 
-## I. Core Concepts & Architecture
-- Fundamental principles and how they interconnect
-- System architecture patterns and component relationships
-- Key abstractions and mental models
+    SECTION_DRAFT_PROMPT = """Create a comprehensive technical deep-dive on the topic that a Principal TPM at a Mag7 company would need to know.
 
-## II. Real-World Implementation
-- How top tech companies (Google, Amazon, Netflix, Meta) implement this
-- Concrete examples with specific technologies and configurations
-- Common pitfalls and how industry leaders avoid them
-
-## III. Trade-offs & Decision Framework
-- Key trade-offs (consistency vs availability, latency vs throughput, etc.)
-- Decision criteria for choosing between approaches
-- When to use vs. when to avoid specific patterns
-
-## IV. Operational Considerations
-- Monitoring, alerting, and observability best practices
-- Failure modes and recovery strategies
-- Scaling considerations and capacity planning
-
-## V. Strategic Context
-- Business impact and ROI considerations
-- How this enables or constrains product capabilities
-- Future trends and evolution of the technology
-
-FORMAT RULES:
-- Start each section with "## I. ", "## II. ", etc. (Roman numerals are REQUIRED)
-- Use bullet points for key concepts within each section
-- Include code snippets or diagrams where helpful
-- Each section should be 500-700 words of substantive content
-- Total: 2500-3500 words"""
-
-    SECTION_DRAFT_PROMPT = """You are a Principal TPM at a Mag7 company writing authoritative technical documentation for your engineering organization.
+When you answer, ensure your coverage includes:
+(1) Real-world behavior/examples at a Mag7
+(2) Tradeoffs for every choice made or action taken
+(3) Impact on business/ROI/CX/Skill/Business capabilities
 
 TOPIC: {topic}
 
@@ -105,12 +82,15 @@ CONTEXT FROM OVERALL GUIDE:
 Write a comprehensive section that includes:
 - **Technical depth**: Explain the "how" and "why", not just the "what"
 - **Real-world examples**: Reference specific implementations at Google, Amazon, Netflix, etc.
-- **Trade-offs analysis**: Discuss pros/cons with quantified impacts where possible
+- **Tradeoffs analysis**: Discuss pros/cons with quantified impacts where possible
 - **Actionable guidance**: Readers should know exactly what to do after reading
 - **Edge cases**: Address common failure modes and how to handle them
 {feedback}
 
-TARGET: 600-900 words of substantive, Principal-level content. No fluff or generic statements."""
+**INTERVIEW QUESTIONS:**
+At the end of your response, include a section titled "## Interview Questions" with at least 2 challenging interview questions that a Principal TPM might be asked about this topic. Include brief guidance on what a strong answer should cover.
+
+TARGET: A substantive deep-dive, Principal-level content. No fluff or generic statements. No metaphors, strictly professional."""
 
     SECTION_REWRITE_PROMPT = """Your previous draft was reviewed by a Mag7 Bar Raiser and needs improvement.
 
@@ -133,16 +113,15 @@ REWRITE INSTRUCTIONS:
 Output the improved section directly. Target 600-900 words."""
 
     # Prompts for Gemini-only mode (when not using Claude)
-    SPLIT_TOPICS_PROMPT = """Analyze this technical content and identify 4-6 distinct sub-topics that warrant deep exploration.
+    SPLIT_TOPICS_PROMPT = """Analyze this technical content and identify distinct sub-topics (by Roman numerals) that warrant deep-dive and further exploration.
 
 CONTENT:
 {content}
 
 CRITERIA FOR GOOD SUB-TOPICS:
-- Each should be substantial enough for 600-900 words of deep content
+- Each should be substantial enough for a deep-dive
 - Topics should be complementary but not overlapping
 - Include both foundational concepts AND advanced/operational aspects
-- Consider: architecture, implementation, operations, trade-offs, best practices
 
 Return ONLY a JSON array of descriptive topic strings.
 Example: ["Topic 1: Core Architecture and Component Design", "Topic 2: Scaling Strategies and Performance Optimization"]
