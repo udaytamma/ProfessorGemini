@@ -19,6 +19,12 @@ ROMAN_SECTION_PATTERN = re.compile(
     re.MULTILINE
 )
 
+# Interview Questions section pattern
+INTERVIEW_QUESTIONS_PATTERN = re.compile(
+    r"^##\s*Interview\s+Questions?\s*$",
+    re.MULTILINE | re.IGNORECASE
+)
+
 
 @dataclass
 class LocalSplitResult:
@@ -105,15 +111,39 @@ class LocalSynthesisResult:
     error: Optional[str] = None
 
 
+def extract_interview_questions(content: str) -> tuple[str, str]:
+    """Extract interview questions section from content.
+
+    Looks for "## Interview Questions" header and extracts everything after it.
+    Returns the content without interview questions and the interview questions separately.
+
+    Args:
+        content: Section content that may contain interview questions.
+
+    Returns:
+        Tuple of (content_without_questions, interview_questions_text).
+        If no interview questions found, returns (original_content, "").
+    """
+    match = INTERVIEW_QUESTIONS_PATTERN.search(content)
+    if not match:
+        return content, ""
+
+    # Split at the interview questions header
+    main_content = content[:match.start()].strip()
+    questions_text = content[match.end():].strip()
+
+    return main_content, questions_text
+
+
 def synthesize_locally(
     sections: list[dict],
     topic: str = "",
 ) -> LocalSynthesisResult:
     """Synthesize sections into a Master Guide without calling Gemini.
 
-    Simply concatenates sections in order with proper formatting.
-    Sections are expected to already be in the correct order from
-    the Roman numeral split.
+    Concatenates sections in order with proper formatting.
+    Interview questions are extracted from each section and consolidated
+    into a single section at the end of the guide.
 
     Args:
         sections: List of dicts with 'topic', 'content', and optional 'low_confidence' keys.
@@ -131,6 +161,7 @@ def synthesize_locally(
 
     # Build the Master Guide
     parts = []
+    all_interview_questions = []
 
     # Title
     if topic:
@@ -140,11 +171,21 @@ def synthesize_locally(
     section_titles = [s.get("topic", "Section") for s in sections]
     parts.append(f"This guide covers {len(sections)} key areas: {', '.join(section_titles)}.\n")
 
-    # Add each section
+    # Add each section (extracting interview questions)
     for section in sections:
         section_topic = section.get("topic", "Section")
         section_content = section.get("content", "")
         low_confidence = section.get("low_confidence", False)
+
+        # Extract interview questions from this section
+        main_content, questions = extract_interview_questions(section_content)
+
+        # Collect interview questions with section context
+        if questions:
+            all_interview_questions.append({
+                "topic": section_topic,
+                "questions": questions,
+            })
 
         # Add section header
         if low_confidence:
@@ -153,8 +194,16 @@ def synthesize_locally(
         else:
             parts.append(f"\n## {section_topic}\n")
 
-        # Add section content
-        parts.append(section_content)
+        # Add section content (without interview questions)
+        parts.append(main_content)
+
+    # Add consolidated Interview Questions section at the end
+    if all_interview_questions:
+        parts.append("\n---\n")
+        parts.append("\n## Interview Questions\n")
+        for iq in all_interview_questions:
+            parts.append(f"\n### {iq['topic']}\n")
+            parts.append(iq["questions"])
 
     # Conclusion
     parts.append("\n---\n")
@@ -165,7 +214,10 @@ def synthesize_locally(
 
     content = "\n".join(parts)
 
-    logger.info(f"Local synthesis completed: {len(sections)} sections, {len(content)} chars")
+    logger.info(
+        f"Local synthesis completed: {len(sections)} sections, "
+        f"{len(all_interview_questions)} interview question sets, {len(content)} chars"
+    )
 
     return LocalSynthesisResult(
         content=content,

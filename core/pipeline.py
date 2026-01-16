@@ -14,7 +14,6 @@ Supports multiple optimization modes to reduce Gemini API calls:
 
 import asyncio
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable, Optional
@@ -22,7 +21,7 @@ from uuid import uuid4
 
 from config.settings import get_settings
 from core.gemini_client import GeminiClient
-from core.bar_raiser import BarRaiser, BarRaiserResult
+from core.bar_raiser import BarRaiserResult
 from core.local_processing import split_by_roman_numerals, synthesize_locally
 
 
@@ -216,8 +215,9 @@ class Pipeline:
 
         # Try local Roman numeral parsing first (no API call)
         local_split = split_by_roman_numerals(base_response.content)
+        local_split_min_sections = 2
 
-        if local_split.success and len(local_split.topics) >= 3:
+        if local_split.success and len(local_split.topics) >= local_split_min_sections:
             # Local split succeeded - use it
             sub_topics = local_split.topics
             section_content_map = local_split.sections
@@ -270,44 +270,18 @@ class Pipeline:
         self._log_status(f"2. Splitting response into sections... completed ({len(sub_topics)} sections)")
 
         # Step 3: Deep dive (with or without Bar Raiser critique)
-        if self._settings.enable_critique:
-            self._log_status("3. Generating deep dives with critique...")
-        else:
-            self._log_status("3. Generating deep dives...")
+        critique_enabled = False
+        self._log_status("3. Generating deep dives...")
 
         step3 = PipelineStep(name="deep_dive", started_at=datetime.now())
 
         # Check if we already have content from local split
-        if section_content_map:
-            # We have pre-extracted content from Roman numeral split
-            # Still generate deeper content for each section
-            deep_dive_results = self._generate_deep_dives_from_sections(
-                topics=sub_topics,
-                section_content=section_content_map,
-                context=base_response.content,
-            )
-        else:
-            # No pre-extracted content - use Bar Raiser (with or without critique)
-            bar_raiser = BarRaiser(
-                gemini_client=self._gemini,
-                claude_client=self._claude,
-                status_callback=None,
-            )
-
-            if self._settings.use_claude:
-                with ThreadPoolExecutor(max_workers=self._settings.max_workers) as executor:
-                    deep_dive_results = bar_raiser.process_topics_parallel(
-                        topics=sub_topics,
-                        context=base_response.content,
-                        executor=executor,
-                    )
-            else:
-                deep_dive_results = asyncio.run(
-                    bar_raiser.process_topics_async(
-                        topics=sub_topics,
-                        context=base_response.content,
-                    )
-                )
+        # Generate drafts without Bar Raiser loop
+        deep_dive_results = self._generate_deep_dives_from_sections(
+            topics=sub_topics,
+            section_content=section_content_map,
+            context=base_response.content,
+        )
 
         step3.completed_at = datetime.now()
         step3.duration_ms = sum(r.total_duration_ms for r in deep_dive_results)
@@ -322,7 +296,7 @@ class Pipeline:
             "successful": len(successful),
             "low_confidence": len(low_confidence),
             "failed": len(deep_dive_results) - len(successful),
-            "critique_enabled": self._settings.enable_critique,
+            "critique_enabled": critique_enabled,
         }
 
         steps.append(step3)
@@ -501,17 +475,30 @@ class Pipeline:
                     total_duration_ms=duration_ms,
                     success=True,
                 )
-            else:
-                self._log_status(f"Worker {worker_id}: Failed '{topic[:40]}...' - {response.error}")
+            if topic_context:
+                self._log_status(
+                    f"Worker {worker_id}: Empty Gemini response for '{topic[:40]}...', using local section content"
+                )
                 return BarRaiserResult(
                     topic=topic,
-                    final_content="",
+                    final_content=topic_context,
                     low_confidence=True,
                     attempts=[],
                     total_duration_ms=duration_ms,
-                    success=False,
-                    error=response.error or "Empty response from Gemini",
+                    success=True,
+                    error="Empty Gemini response; used local section content",
                 )
+
+            self._log_status(f"Worker {worker_id}: Failed '{topic[:40]}...' - {response.error}")
+            return BarRaiserResult(
+                topic=topic,
+                final_content="",
+                low_confidence=True,
+                attempts=[],
+                total_duration_ms=duration_ms,
+                success=False,
+                error=response.error or "Empty response from Gemini",
+            )
 
         # Create tasks for all topics (maintaining order)
         tasks = [

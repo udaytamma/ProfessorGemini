@@ -156,8 +156,9 @@ class TestGeminiClient:
             client = GeminiClient()
             response = client.generate_base_knowledge("Test topic")
 
-            assert response.success
-            assert response.content == ""
+            assert not response.success
+            assert "Empty response" in response.error
+            assert mock_client.models.generate_content.call_count == 2
 
 
 class TestGeminiClientPrompts:

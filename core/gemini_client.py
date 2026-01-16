@@ -51,9 +51,10 @@ class GeminiClient:
 
     # System prompts for different pipeline stages
     BASE_KNOWLEDGE_PROMPT = """You are a world-class technical educator with 20+ years of experience at companies like Google, Amazon, and Netflix.
-Your audience is preparing for Principal Technical Program Manager job interviews at Mag7 companies.
+Your audience is preparing for Generalist/Product Principal TPM job interviews at Mag7 companies.
+Customize responses to a Generalist/Product Principal TPM at a Mag7 company. Do not go overboard or more depth than required for this role.
 
-Create a comprehensive technical deep-dive on the topic that a Principal TPM at a Mag7 company would need to know.
+Create a comprehensive technical deep-dive on the topic that a Generalist/Product Principal TPM at a Mag7 company would need to know.
 
 When you answer, ensure your coverage includes:
 (1) Real-world behavior/examples at a Mag7
@@ -67,7 +68,8 @@ This format is MANDATORY for proper parsing. Do NOT use any other numbering syst
 
 TOPIC: {topic}"""
 
-    SECTION_DRAFT_PROMPT = """Create a comprehensive technical deep-dive on the topic that a Principal TPM at a Mag7 company would need to know.
+    SECTION_DRAFT_PROMPT = """Create a comprehensive technical deep-dive on the topic that a Generalist/Product Principal TPM at a Mag7 company would need to know.
+Customize responses to a Generalist/Product Principal TPM at a Mag7 company. Do not go overboard or more depth than required for this role.
 
 When you answer, ensure your coverage includes:
 (1) Real-world behavior/examples at a Mag7
@@ -88,11 +90,12 @@ Write a comprehensive section that includes:
 {feedback}
 
 **INTERVIEW QUESTIONS:**
-At the end of your response, include a section titled "## Interview Questions" with at least 2 challenging interview questions that a Principal TPM might be asked about this topic. Include brief guidance on what a strong answer should cover.
+At the end of your response, include a section titled "## Interview Questions" with at least 2 challenging interview questions that a Generalist/Product Principal TPM might be asked about this topic. Include brief guidance on what a strong answer should cover.
 
 TARGET: A substantive deep-dive, Principal-level content. No fluff or generic statements. No metaphors, strictly professional."""
 
     SECTION_REWRITE_PROMPT = """Your previous draft was reviewed by a Mag7 Bar Raiser and needs improvement.
+Customize responses to a Generalist/Product Principal TPM at a Mag7 company. Do not go overboard or more depth than required for this role.
 
 TOPIC: {topic}
 REVIEW STRICTNESS: {strictness}
@@ -114,6 +117,7 @@ Output the improved section directly. Target 600-900 words."""
 
     # Prompts for Gemini-only mode (when not using Claude)
     SPLIT_TOPICS_PROMPT = """Analyze this technical content and identify distinct sub-topics (by Roman numerals) that warrant deep-dive and further exploration.
+Customize responses to a Generalist/Product Principal TPM at a Mag7 company. Do not go overboard or more depth than required for this role.
 
 CONTENT:
 {content}
@@ -130,6 +134,7 @@ No other text, just the JSON array."""
 
     CRITIQUE_PROMPTS = {
         "high": """You are a VP of Engineering at Google conducting a Bar Raiser review.
+Customize responses to a Generalist/Product Principal TPM at a Mag7 company. Do not go overboard or more depth than required for this role.
 
 TOPIC: {topic}
 
@@ -141,12 +146,13 @@ EVALUATION CRITERIA (all must pass):
 2. TRADE-OFFS: Discusses concrete pros/cons with quantified or comparative analysis
 3. ACTIONABILITY: Reader knows exactly what to do after reading
 4. DEPTH: Goes beyond surface-level explanation to expert-level insight
-5. COMPLETENESS: No obvious gaps that would leave a Principal TPM unprepared
+5. COMPLETENESS: No obvious gaps that would leave a Generalist/Product Principal TPM unprepared
 
 First line must be exactly: PASS or FAIL
 If FAIL, list 2-3 specific improvements needed (be actionable, not vague).""",
 
         "medium": """Senior technical review for documentation quality.
+Customize responses to a Generalist/Product Principal TPM at a Mag7 company. Do not go overboard or more depth than required for this role.
 
 TOPIC: {topic}
 
@@ -163,6 +169,7 @@ First line: PASS or FAIL
 If FAIL: List specific issues to fix.""",
 
         "low": """Quick quality check.
+Customize responses to a Generalist/Product Principal TPM at a Mag7 company. Do not go overboard or more depth than required for this role.
 
 TOPIC: {topic}
 
@@ -175,7 +182,8 @@ First line: PASS or FAIL
 Only FAIL for significant errors or clearly insufficient content.""",
     }
 
-    SYNTHESIS_PROMPT = """You are creating a comprehensive Master Guide for Principal TPMs from multiple expert-written sections.
+    SYNTHESIS_PROMPT = """You are creating a comprehensive Master Guide for Generalist/Product Principal TPMs from multiple expert-written sections.
+Customize responses to a Generalist/Product Principal TPM at a Mag7 company. Do not go overboard or more depth than required for this role.
 
 SECTIONS TO SYNTHESIZE:
 {sections}
@@ -190,7 +198,7 @@ OUTPUT FORMAT:
 - Title: Use the main topic only (e.g., "# Load Balancing" not "# The Principal TPM's Guide to...")
 - Executive Summary: 3-4 sentences covering what the reader will learn and why it matters
 - Sections: Use ## headers, maintain depth, include all key content from source sections
-- Conclusion: Brief wrap-up with key takeaways for a Principal TPM
+- Conclusion: Brief wrap-up with key takeaways for a Generalist/Product Principal TPM
 
 Preserve technical depth and specific examples from the source sections. The final guide should be comprehensive and immediately actionable."""
 
@@ -458,29 +466,33 @@ Preserve technical depth and specific examples from the source sections. The fin
             config_kwargs["max_output_tokens"] = max_tokens
 
         try:
-            response = self._client.models.generate_content(
-                model=self._settings.gemini_model,
-                contents=prompt,
-                config=types.GenerateContentConfig(**config_kwargs),
-            )
+            response = None
+            for attempt in range(2):
+                response = self._client.models.generate_content(
+                    model=self._settings.gemini_model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(**config_kwargs),
+                )
+
+                if response.text:
+                    duration_ms = int((time.time() - start_time) * 1000)
+                    logger.info(f"Gemini {operation} completed in {duration_ms}ms")
+                    return GeminiResponse(
+                        content=response.text,
+                        model=self._settings.gemini_model,
+                        duration_ms=duration_ms,
+                        success=True,
+                    )
+
+                logger.warning(f"Empty response from Gemini for {operation} (attempt {attempt + 1}/2)")
 
             duration_ms = int((time.time() - start_time) * 1000)
-
-            # Extract text content
-            if response.text:
-                content = response.text
-            else:
-                # Handle blocked or empty responses
-                content = ""
-                logger.warning(f"Empty response from Gemini for {operation}")
-
-            logger.info(f"Gemini {operation} completed in {duration_ms}ms")
-
             return GeminiResponse(
-                content=content,
+                content="",
                 model=self._settings.gemini_model,
                 duration_ms=duration_ms,
-                success=True,
+                success=False,
+                error="Empty response from Gemini",
             )
 
         except Exception as e:
@@ -526,28 +538,34 @@ Preserve technical depth and specific examples from the source sections. The fin
             config_kwargs["max_output_tokens"] = max_tokens
 
         try:
-            # Use async client via aio namespace
-            response = await self._client.aio.models.generate_content(
-                model=self._settings.gemini_model,
-                contents=prompt,
-                config=types.GenerateContentConfig(**config_kwargs),
-            )
+            response = None
+            for attempt in range(2):
+                # Use async client via aio namespace
+                response = await self._client.aio.models.generate_content(
+                    model=self._settings.gemini_model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(**config_kwargs),
+                )
+
+                if response.text:
+                    duration_ms = int((time.time() - start_time) * 1000)
+                    logger.info(f"Gemini {operation} completed in {duration_ms}ms (async)")
+                    return GeminiResponse(
+                        content=response.text,
+                        model=self._settings.gemini_model,
+                        duration_ms=duration_ms,
+                        success=True,
+                    )
+
+                logger.warning(f"Empty response from Gemini for {operation} (attempt {attempt + 1}/2)")
 
             duration_ms = int((time.time() - start_time) * 1000)
-
-            if response.text:
-                content = response.text
-            else:
-                content = ""
-                logger.warning(f"Empty response from Gemini for {operation}")
-
-            logger.info(f"Gemini {operation} completed in {duration_ms}ms (async)")
-
             return GeminiResponse(
-                content=content,
+                content="",
                 model=self._settings.gemini_model,
                 duration_ms=duration_ms,
-                success=True,
+                success=False,
+                error="Empty response from Gemini",
             )
 
         except Exception as e:

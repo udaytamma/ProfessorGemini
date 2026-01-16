@@ -8,7 +8,6 @@ import pytest
 
 from core.pipeline import Pipeline, PipelineResult, PipelineStep
 from core.gemini_client import GeminiResponse
-from core.bar_raiser import BarRaiserResult
 
 
 class TestPipelineStep:
@@ -213,9 +212,7 @@ class TestPipeline:
         assert result.success is False
         assert "Step 2" in result.error
 
-    @patch("core.pipeline.BarRaiser")
-    @patch("core.pipeline.ThreadPoolExecutor")
-    def test_execute_full_success(self, mock_executor, mock_bar_raiser, mock_pipeline):
+    def test_execute_full_success(self, mock_pipeline):
         """Test successful full pipeline execution."""
         from core.claude_client import ClaudeResponse
 
@@ -241,32 +238,17 @@ class TestPipeline:
             ),
         )
 
-        # Step 3: Bar Raiser results
-        mock_bar_raiser_instance = MagicMock()
-        mock_bar_raiser_instance.process_topics_parallel.return_value = [
-            BarRaiserResult(
-                topic="Topic 1",
-                final_content="Content 1",
-                low_confidence=False,
-                total_duration_ms=1000,
+        async def mock_generate_section_draft_async(*args, **kwargs):
+            return GeminiResponse(
+                content="Draft content",
+                model="gemini-3-pro-preview",
+                duration_ms=1000,
                 success=True,
-            ),
-            BarRaiserResult(
-                topic="Topic 2",
-                final_content="Content 2",
-                low_confidence=False,
-                total_duration_ms=1000,
-                success=True,
-            ),
-            BarRaiserResult(
-                topic="Topic 3",
-                final_content="Content 3",
-                low_confidence=True,  # One low confidence
-                total_duration_ms=2000,
-                success=True,
-            ),
-        ]
-        mock_bar_raiser.return_value = mock_bar_raiser_instance
+            )
+
+        mock_pipeline._gemini.generate_section_draft_async = MagicMock(
+            side_effect=mock_generate_section_draft_async
+        )
 
         # Step 4: Synthesis
         mock_pipeline._claude.synthesize_guide.return_value = ClaudeResponse(
@@ -280,12 +262,10 @@ class TestPipeline:
 
         assert result.success is True
         assert result.total_sections == 3
-        assert result.low_confidence_sections == 1
+        assert result.low_confidence_sections == 0
         assert len(result.master_guide) > 0  # Local synthesis produces content
 
-    @patch("core.pipeline.BarRaiser")
-    @patch("core.pipeline.ThreadPoolExecutor")
-    def test_execute_no_sections_to_synthesize(self, mock_executor, mock_bar_raiser, mock_pipeline):
+    def test_execute_no_sections_to_synthesize(self, mock_pipeline):
         """Test execute when all deep dives fail."""
         from core.claude_client import ClaudeResponse
 
@@ -304,17 +284,18 @@ class TestPipeline:
             ClaudeResponse(content='["Topic 1"]', model="claude-opus-4-5-20251101", duration_ms=500, success=True),
         )
 
-        mock_bar_raiser_instance = MagicMock()
-        mock_bar_raiser_instance.process_topics_parallel.return_value = [
-            BarRaiserResult(
-                topic="Topic 1",
-                final_content="",  # No content
-                low_confidence=True,
+        async def mock_generate_section_draft_async(*args, **kwargs):
+            return GeminiResponse(
+                content="",
+                model="gemini-3-pro-preview",
+                duration_ms=1000,
                 success=False,
                 error="Failed",
-            ),
-        ]
-        mock_bar_raiser.return_value = mock_bar_raiser_instance
+            )
+
+        mock_pipeline._gemini.generate_section_draft_async = MagicMock(
+            side_effect=mock_generate_section_draft_async
+        )
 
         result = mock_pipeline.execute("Test topic")
 
@@ -385,8 +366,7 @@ class TestPipelineGeminiOnly:
         assert ready is True
         assert "Gemini-only" in message
 
-    @patch("core.pipeline.BarRaiser")
-    def test_execute_gemini_only_success(self, mock_bar_raiser, mock_pipeline):
+    def test_execute_gemini_only_success(self, mock_pipeline):
         """Test successful execution in Gemini-only mode."""
         mock_pipeline._gemini.is_available.return_value = True
 
@@ -409,29 +389,17 @@ class TestPipelineGeminiOnly:
             ),
         )
 
-        # Step 3: Bar Raiser - mock the async method for Gemini-only mode
-        mock_bar_raiser_instance = MagicMock()
+        async def mock_generate_section_draft_async(*args, **kwargs):
+            return GeminiResponse(
+                content="Draft content",
+                model="gemini-3-pro-preview",
+                duration_ms=1000,
+                success=True,
+            )
 
-        async def mock_process_topics_async(*args, **kwargs):
-            return [
-                BarRaiserResult(
-                    topic="Topic 1",
-                    final_content="Content 1",
-                    low_confidence=False,
-                    total_duration_ms=1000,
-                    success=True,
-                ),
-                BarRaiserResult(
-                    topic="Topic 2",
-                    final_content="Content 2",
-                    low_confidence=False,
-                    total_duration_ms=1000,
-                    success=True,
-                ),
-            ]
-
-        mock_bar_raiser_instance.process_topics_async = mock_process_topics_async
-        mock_bar_raiser.return_value = mock_bar_raiser_instance
+        mock_pipeline._gemini.generate_section_draft_async = MagicMock(
+            side_effect=mock_generate_section_draft_async
+        )
 
         # Step 4: Synthesis (Gemini)
         mock_pipeline._gemini.synthesize_guide.return_value = GeminiResponse(
@@ -446,6 +414,100 @@ class TestPipelineGeminiOnly:
         assert result.success is True
         assert result.total_sections == 2
         assert len(result.master_guide) > 0  # Local synthesis produces content
+
+    @patch("core.pipeline.split_by_roman_numerals")
+    def test_execute_skips_bar_raiser_when_critique_disabled(
+        self,
+        mock_split,
+        mock_pipeline,
+    ):
+        """Test deep dives execute without Bar Raiser."""
+        mock_pipeline._gemini.is_available.return_value = True
+
+        mock_pipeline._gemini.generate_base_knowledge.return_value = GeminiResponse(
+            content="Base content without roman numerals",
+            model="gemini-3-pro-preview",
+            duration_ms=1000,
+            success=True,
+        )
+
+        mock_split.return_value = MagicMock(
+            success=False,
+            topics=[],
+            sections={},
+            error="No roman numerals",
+        )
+
+        mock_pipeline._gemini.split_into_topics.return_value = (
+            ["Topic 1", "Topic 2"],
+            GeminiResponse(
+                content='["Topic 1", "Topic 2"]',
+                model="gemini-3-pro-preview",
+                duration_ms=200,
+                success=True,
+            ),
+        )
+
+        mock_pipeline._gemini.generate_section_draft_async = MagicMock()
+
+        async def mock_generate_section_draft_async(*args, **kwargs):
+            return GeminiResponse(
+                content="Draft content",
+                model="gemini-3-pro-preview",
+                duration_ms=300,
+                success=True,
+            )
+
+        mock_pipeline._gemini.generate_section_draft_async.side_effect = mock_generate_section_draft_async
+
+        mock_pipeline._gemini.synthesize_guide.return_value = GeminiResponse(
+            content="# Guide\n\nContent",
+            model="gemini-3-pro-preview",
+            duration_ms=300,
+            success=True,
+        )
+
+        result = mock_pipeline.execute("Test topic")
+
+        assert result.success is True
+        assert mock_pipeline._gemini.generate_section_draft_async.call_count > 0
+
+    @patch("core.pipeline.split_by_roman_numerals")
+    def test_deep_dives_with_local_context(self, mock_split, mock_pipeline):
+        """Test local section content is used as context for Gemini deep dives."""
+        mock_pipeline._gemini.is_available.return_value = True
+        mock_pipeline._gemini.generate_base_knowledge.return_value = GeminiResponse(
+            content="Base content",
+            model="gemini-3-pro-preview",
+            duration_ms=500,
+            success=True,
+        )
+
+        mock_split.return_value = MagicMock(
+            success=True,
+            topics=["I. Topic One", "II. Topic Two"],
+            sections={
+                "I. Topic One": "Section one content",
+                "II. Topic Two": "Section two content",
+            },
+        )
+
+        async def mock_generate_section_draft_async(*args, **kwargs):
+            return GeminiResponse(
+                content="Draft content",
+                model="gemini-3-pro-preview",
+                duration_ms=100,
+                success=True,
+            )
+
+        mock_pipeline._gemini.generate_section_draft_async = MagicMock(
+            side_effect=mock_generate_section_draft_async
+        )
+
+        result = mock_pipeline.execute("Test topic")
+
+        assert result.success is True
+        assert mock_pipeline._gemini.generate_section_draft_async.call_count > 0
 
 
 class TestPipelineIntegration:

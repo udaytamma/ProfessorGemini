@@ -221,17 +221,40 @@ class RequestLogger:
         return None
 
 
-def configure_logging(level: str = "INFO") -> None:
+_logging_configured = False
+
+
+def configure_logging(level: str = "INFO", log_file: str = "/tmp/professorgemini.log") -> None:
     """Configure application logging.
 
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR).
+        log_file: Path to log file.
     """
-    logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    global _logging_configured
+    if _logging_configured:
+        return
+    _logging_configured = True
+
+    log_level = getattr(logging, level.upper(), logging.INFO)
+    log_format = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+
+    # Console handler (stderr)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(log_level)
+    console_handler.setFormatter(logging.Formatter(log_format, date_format))
+    root_logger.addHandler(console_handler)
+
+    # File handler
+    file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+    file_handler.setLevel(log_level)
+    file_handler.setFormatter(logging.Formatter(log_format, date_format))
+    root_logger.addHandler(file_handler)
 
     # Reduce noise from third-party libraries
     logging.getLogger("httpx").setLevel(logging.WARNING)

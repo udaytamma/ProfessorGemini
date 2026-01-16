@@ -988,6 +988,9 @@ def main() -> None:
 
     # ===== EXECUTION =====
     if start_clicked and topic.strip():
+        # Clear previous result before generating new one
+        st.session_state.pipeline_result = None
+        st.session_state.timer_elapsed = None
         with st.spinner("Generating guide..."):
             run_pipeline(topic.strip())
         st.rerun()
