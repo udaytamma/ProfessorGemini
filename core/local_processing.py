@@ -136,22 +136,23 @@ def extract_interview_questions(content: str) -> tuple[str, str]:
 
 
 def remove_duplicate_headers(content: str, section_topic: str) -> str:
-    """Remove duplicate section headers from content.
+    """Remove duplicate section headers and fix subsection header levels.
 
-    Professor Gemini may generate content with:
+    Professor Gemini deep dives may generate content with:
     1. A leading header matching the section topic (should be removed - added by synthesis)
-    2. An intro H2 header with brief summary
-    3. A *** separator
-    4. An H1 header with the same title for detailed content
+    2. Duplicate Roman numeral headers (## I., ## II., etc.) from its own structure
+    3. H1 headers with Roman numerals (orphaned from deep dive generation)
+    4. Numbered H2 headers (## 1., ## 2.) that should be H3 subsections
+    5. A *** separator followed by duplicate content
 
-    This function removes these duplicates, keeping only the detailed content.
+    This function cleans up these issues to produce properly structured content.
 
     Args:
         content: Section content that may have duplicate headers.
         section_topic: The section topic (e.g., "I. Architectural Fundamentals").
 
     Returns:
-        Content with duplicate headers removed.
+        Content with duplicate headers removed and subsections fixed.
     """
     processed = content.strip()
 
@@ -168,37 +169,51 @@ def remove_duplicate_headers(content: str, section_topic: str) -> str:
     )
     processed = section_header_pattern.sub("\n", processed)
 
-    # 3. Remove H1 headers that appear after *** separators (these are duplicates)
-    # Pattern: ***\n\n# I. Title or ***\n# I. Title
+    # 3. Remove ALL H1 headers with Roman numerals (these are orphaned duplicates)
+    # Deep dives sometimes create their own # I., # II. structure
     processed = re.sub(
-        r"\n\*{3}\n+#\s+[IVXLCDM]+\.[^\n]+\n",
-        "\n***\n\n",
+        r"\n#\s+[IVXLCDM]+\.\s*[^\n]+\n",
+        "\n",
         processed
     )
 
-    # 4. Remove any remaining duplicate H1/H2 headers with Roman numerals
-    # Track seen headings and remove duplicates
+    # 4. Remove *** separators and any content structure markers
+    # These are artifacts from deep dive generation
+    processed = re.sub(r"\n\*{3}\n*", "\n\n", processed)
+
+    # 5. Convert numbered H2 headers (## 1., ## 2., etc.) to H3
+    # Deep dives create their own subsection structure that conflicts with Roman numerals
+    processed = re.sub(
+        r"^(##)\s+(\d+\.)",
+        r"###\2",
+        processed,
+        flags=re.MULTILINE
+    )
+
+    # 6. Remove any remaining duplicate headers at the SAME level
+    # Only compare H2 vs H2, H3 vs H3 - don't strip H2 if there's a matching H3
+    # This preserves main sections (## I.) even if Interview Questions has (### I.)
     lines = processed.split("\n")
-    seen_headings: set[str] = set()
+    seen_headings: set[str] = set()  # "level:heading_text" format
     result_lines = []
 
     for line in lines:
-        heading_match = re.match(r"^(#{1,2})\s+([IVXLCDM]+\.\s*.+)$", line)
+        heading_match = re.match(r"^(#{1,3})\s+([IVXLCDM]+\.\s*.+)$", line)
         if heading_match:
+            level = len(heading_match.group(1))
             heading_text = heading_match.group(2).strip().lower()
-            if heading_text in seen_headings:
-                # Skip duplicate heading
+            # Use level + text as key to only detect same-level duplicates
+            key = f"{level}:{heading_text}"
+            if key in seen_headings:
+                # Skip duplicate heading at same level
                 continue
-            seen_headings.add(heading_text)
+            seen_headings.add(key)
         result_lines.append(line)
 
     processed = "\n".join(result_lines)
 
-    # 5. Clean up excessive blank lines
+    # 7. Clean up excessive blank lines
     processed = re.sub(r"\n{4,}", "\n\n\n", processed)
-
-    # 6. Remove any remaining *** that are now orphaned (no content after)
-    processed = re.sub(r"\n\*{3}\s*$", "", processed)
 
     return processed.strip()
 
