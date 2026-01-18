@@ -81,6 +81,12 @@ TOPIC: {topic}
 CONTEXT FROM OVERALL GUIDE:
 {context}
 
+**CRITICAL FORMATTING RULES:**
+1. DO NOT start your response with any header (no # or ## at the beginning)
+2. DO NOT include a header that matches the TOPIC - the section header will be added automatically
+3. For internal subsections, use numbered headers like "### 1. Subsection" or "### Subsection Name"
+4. DO NOT use Roman numerals (I., II., III.) for subsections - those are reserved for main sections
+
 Write a comprehensive section that includes:
 - **Technical depth**: Explain the "how" and "why", not just the "what"
 - **Real-world examples**: Reference specific implementations at Google, Amazon, Netflix, etc.
@@ -90,9 +96,10 @@ Write a comprehensive section that includes:
 {feedback}
 
 **INTERVIEW QUESTIONS:**
-At the end of your response, include a section titled "## Interview Questions" with at least 2 challenging interview questions that a Generalist/Product Principal TPM might be asked about this topic. Include brief guidance on what a strong answer should cover.
+At the end of your response, include a section titled "## Interview Questions" (exactly this, no Roman numerals) with at least 2 challenging interview questions. Include brief guidance on what a strong answer should cover.
 
-TARGET: A substantive deep-dive, Principal-level content. No fluff or generic statements. No metaphors, strictly professional."""
+TARGET: A substantive deep-dive, Principal-level content. No fluff or generic statements. No metaphors, strictly professional.
+START YOUR RESPONSE DIRECTLY WITH CONTENT - NO HEADER LINE."""
 
     SECTION_REWRITE_PROMPT = """Your previous draft was reviewed by a Mag7 Bar Raiser and needs improvement.
 Customize responses to a Generalist/Product Principal TPM at a Mag7 company. Do not go overboard or more depth than required for this role.
@@ -113,7 +120,14 @@ REWRITE INSTRUCTIONS:
 4. Ensure every paragraph adds unique value (no repetition or filler)
 5. Maintain or increase technical depth
 
-Output the improved section directly. Target 600-900 words."""
+**CRITICAL FORMATTING RULES:**
+- DO NOT start with any header (no # or ##) - start directly with content
+- DO NOT include a header matching the TOPIC - it's added automatically
+- Use ### for subsections, NOT Roman numerals (I., II., III.)
+- End with "## Interview Questions" section (no Roman numerals)
+
+Output the improved section directly. Target 600-900 words.
+START YOUR RESPONSE DIRECTLY WITH CONTENT - NO HEADER LINE."""
 
     # Prompts for Gemini-only mode (when not using Claude)
     SPLIT_TOPICS_PROMPT = """Analyze this technical content and identify distinct sub-topics (by Roman numerals) that warrant deep-dive and further exploration.

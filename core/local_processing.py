@@ -138,10 +138,11 @@ def extract_interview_questions(content: str) -> tuple[str, str]:
 def remove_duplicate_headers(content: str, section_topic: str) -> str:
     """Remove duplicate section headers from content.
 
-    Professor Gemini generates content with:
-    1. An intro H2 header with brief summary
-    2. A *** separator
-    3. An H1 header with the same title for detailed content
+    Professor Gemini may generate content with:
+    1. A leading header matching the section topic (should be removed - added by synthesis)
+    2. An intro H2 header with brief summary
+    3. A *** separator
+    4. An H1 header with the same title for detailed content
 
     This function removes these duplicates, keeping only the detailed content.
 
@@ -152,25 +153,30 @@ def remove_duplicate_headers(content: str, section_topic: str) -> str:
     Returns:
         Content with duplicate headers removed.
     """
-    processed = content
+    processed = content.strip()
 
-    # 1. Remove leading H2/H1 that matches section_topic
-    # Pattern: starts with ## I. Title or # I. Title
+    # 1. Remove ANY leading header (H1 or H2) at the very start of content
+    # This handles cases where Gemini ignores the "no header" instruction
+    processed = re.sub(r"^#{1,2}\s+[^\n]+\n+", "", processed)
+
+    # 2. Remove H1/H2 headers that match section_topic anywhere in content
+    # Escape special regex chars in section_topic
+    escaped_topic = re.escape(section_topic)
     section_header_pattern = re.compile(
-        r"^#{1,2}\s+" + re.escape(section_topic) + r"\s*\n+",
-        re.MULTILINE
+        r"\n#{1,2}\s+" + escaped_topic + r"\s*\n",
+        re.IGNORECASE
     )
-    processed = section_header_pattern.sub("", processed, count=1)
+    processed = section_header_pattern.sub("\n", processed)
 
-    # 2. Remove H1 headers that appear after *** separators (these are duplicates)
-    # Pattern: ***\n\n# I. Title
+    # 3. Remove H1 headers that appear after *** separators (these are duplicates)
+    # Pattern: ***\n\n# I. Title or ***\n# I. Title
     processed = re.sub(
         r"\n\*{3}\n+#\s+[IVXLCDM]+\.[^\n]+\n",
         "\n***\n\n",
         processed
     )
 
-    # 3. Remove any remaining duplicate H1/H2 headers with Roman numerals
+    # 4. Remove any remaining duplicate H1/H2 headers with Roman numerals
     # Track seen headings and remove duplicates
     lines = processed.split("\n")
     seen_headings: set[str] = set()
@@ -188,8 +194,11 @@ def remove_duplicate_headers(content: str, section_topic: str) -> str:
 
     processed = "\n".join(result_lines)
 
-    # 4. Clean up excessive blank lines
+    # 5. Clean up excessive blank lines
     processed = re.sub(r"\n{4,}", "\n\n\n", processed)
+
+    # 6. Remove any remaining *** that are now orphaned (no content after)
+    processed = re.sub(r"\n\*{3}\s*$", "", processed)
 
     return processed.strip()
 
