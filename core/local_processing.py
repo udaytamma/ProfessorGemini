@@ -135,6 +135,65 @@ def extract_interview_questions(content: str) -> tuple[str, str]:
     return main_content, questions_text
 
 
+def remove_duplicate_headers(content: str, section_topic: str) -> str:
+    """Remove duplicate section headers from content.
+
+    Professor Gemini generates content with:
+    1. An intro H2 header with brief summary
+    2. A *** separator
+    3. An H1 header with the same title for detailed content
+
+    This function removes these duplicates, keeping only the detailed content.
+
+    Args:
+        content: Section content that may have duplicate headers.
+        section_topic: The section topic (e.g., "I. Architectural Fundamentals").
+
+    Returns:
+        Content with duplicate headers removed.
+    """
+    processed = content
+
+    # 1. Remove leading H2/H1 that matches section_topic
+    # Pattern: starts with ## I. Title or # I. Title
+    section_header_pattern = re.compile(
+        r"^#{1,2}\s+" + re.escape(section_topic) + r"\s*\n+",
+        re.MULTILINE
+    )
+    processed = section_header_pattern.sub("", processed, count=1)
+
+    # 2. Remove H1 headers that appear after *** separators (these are duplicates)
+    # Pattern: ***\n\n# I. Title
+    processed = re.sub(
+        r"\n\*{3}\n+#\s+[IVXLCDM]+\.[^\n]+\n",
+        "\n***\n\n",
+        processed
+    )
+
+    # 3. Remove any remaining duplicate H1/H2 headers with Roman numerals
+    # Track seen headings and remove duplicates
+    lines = processed.split("\n")
+    seen_headings: set[str] = set()
+    result_lines = []
+
+    for line in lines:
+        heading_match = re.match(r"^(#{1,2})\s+([IVXLCDM]+\.\s*.+)$", line)
+        if heading_match:
+            heading_text = heading_match.group(2).strip().lower()
+            if heading_text in seen_headings:
+                # Skip duplicate heading
+                continue
+            seen_headings.add(heading_text)
+        result_lines.append(line)
+
+    processed = "\n".join(result_lines)
+
+    # 4. Clean up excessive blank lines
+    processed = re.sub(r"\n{4,}", "\n\n\n", processed)
+
+    return processed.strip()
+
+
 def synthesize_locally(
     sections: list[dict],
     topic: str = "",
@@ -171,14 +230,17 @@ def synthesize_locally(
     section_titles = [s.get("topic", "Section") for s in sections]
     parts.append(f"This guide covers {len(sections)} key areas: {', '.join(section_titles)}.\n")
 
-    # Add each section (extracting interview questions)
+    # Add each section (extracting interview questions and removing duplicate headers)
     for section in sections:
         section_topic = section.get("topic", "Section")
         section_content = section.get("content", "")
         low_confidence = section.get("low_confidence", False)
 
-        # Extract interview questions from this section
-        main_content, questions = extract_interview_questions(section_content)
+        # Remove duplicate headers from section content
+        cleaned_content = remove_duplicate_headers(section_content, section_topic)
+
+        # Extract interview questions from cleaned content
+        main_content, questions = extract_interview_questions(cleaned_content)
 
         # Collect interview questions with section context
         if questions:
@@ -194,7 +256,7 @@ def synthesize_locally(
         else:
             parts.append(f"\n## {section_topic}\n")
 
-        # Add section content (without interview questions)
+        # Add section content (without interview questions and duplicate headers)
         parts.append(main_content)
 
     # Add consolidated Interview Questions section at the end
