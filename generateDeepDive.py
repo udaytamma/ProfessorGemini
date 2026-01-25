@@ -10,13 +10,17 @@ Usage:
     python generateDeepDive.py 2.5           # Generate Section 2.5 (Migration Patterns)
     python generateDeepDive.py 3.1           # Generate Section 3.1 (Distributed Consensus)
     python generateDeepDive.py 2.6 --dry-run # Preview topics without generating
+    python generateDeepDive.py 2.6 --force   # Regenerate even if pages exist
 
 The script:
 1. Parses the guide TSX file to extract <Subsection title="..."> tags for the section
-2. Gets the section name (e.g., "Communication Patterns") for sidebar categorization
-3. Runs Pipeline.execute() in parallel using ThreadPoolExecutor (max 5 workers)
-4. Saves each result to gemini-responses/ via FileManager.save_guide()
-5. Updates Knowledge Base page.tsx with new sidebar section (idempotent)
+2. Checks for existing pages and skips them (unless --force)
+3. Gets the section name (e.g., "Communication Patterns") for sidebar categorization
+4. Runs Pipeline.execute() in parallel using ThreadPoolExecutor (max 5 workers)
+5. Retries failed topics once after 30 second wait
+6. Cleans up duplicate files before sync
+7. Saves each result to gemini-responses/ via FileManager.save_guide()
+8. Updates Knowledge Base page.tsx with new sidebar section (idempotent)
 
 See SCRIPTS.md for full documentation.
 """
@@ -24,7 +28,10 @@ See SCRIPTS.md for full documentation.
 import argparse
 import logging
 import re
+import subprocess
 import sys
+import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import NamedTuple
@@ -43,8 +50,10 @@ logger = logging.getLogger(__name__)
 
 GUIDE_PATH = Path("/Users/omega/Projects/Cyrus/src/app/nebula/system-design/guide/page.tsx")
 KNOWLEDGE_BASE_PATH = Path("/Users/omega/Projects/Cyrus/src/app/nebula/knowledge-base/page.tsx")
+GEMINI_RESPONSES_PATH = Path("/Users/omega/Projects/Cyrus/gemini-responses")
 
 MAX_WORKERS = 5
+RETRY_WAIT_SECONDS = 30
 
 
 class TopicResult(NamedTuple):
@@ -55,6 +64,7 @@ class TopicResult(NamedTuple):
     filepath: str
     slug: str
     error: str
+    skipped: bool = False
 
 
 def title_to_slug(title: str) -> str:
@@ -69,6 +79,82 @@ def title_to_slug(title: str) -> str:
     slug = re.sub(r"-+", "-", slug)
     slug = slug.strip("-")
     return slug
+
+
+def check_existing_page(slug: str) -> Path | None:
+    """Check if a page with this slug already exists in gemini-responses.
+
+    Args:
+        slug: The slug to check for
+
+    Returns:
+        Path to existing file if found, None otherwise
+    """
+    if not GEMINI_RESPONSES_PATH.exists():
+        return None
+
+    # Look for files that start with the slug
+    for file in GEMINI_RESPONSES_PATH.glob(f"{slug}-*.md"):
+        return file
+
+    return None
+
+
+def find_duplicates() -> dict[str, list[Path]]:
+    """Find duplicate files in gemini-responses (same slug, different timestamps).
+
+    Returns:
+        Dict mapping slug to list of file paths (only includes slugs with >1 file)
+    """
+    if not GEMINI_RESPONSES_PATH.exists():
+        return {}
+
+    slug_to_files: dict[str, list[Path]] = defaultdict(list)
+
+    for file in GEMINI_RESPONSES_PATH.glob("*.md"):
+        # Extract slug from filename (remove timestamp suffix)
+        # Format: slug-name-20260122-0953.md
+        name = file.stem
+        # Find the timestamp pattern at the end
+        match = re.match(r"(.+)-\d{8}-\d{4}$", name)
+        if match:
+            slug = match.group(1)
+            slug_to_files[slug].append(file)
+
+    # Return only slugs with duplicates
+    return {slug: files for slug, files in slug_to_files.items() if len(files) > 1}
+
+
+def cleanup_duplicates() -> int:
+    """Clean up duplicate files, keeping only the latest (by modification time).
+
+    Returns:
+        Number of files removed
+    """
+    duplicates = find_duplicates()
+    if not duplicates:
+        return 0
+
+    removed_count = 0
+    for slug, files in duplicates.items():
+        # Sort by modification time, newest first
+        files_sorted = sorted(files, key=lambda f: f.stat().st_mtime, reverse=True)
+        latest = files_sorted[0]
+        to_remove = files_sorted[1:]
+
+        logger.info(f"Duplicate found for '{slug}': keeping {latest.name}")
+        for old_file in to_remove:
+            logger.info(f"  Removing: {old_file.name}")
+            # Use trash command (macOS) for safe deletion
+            try:
+                subprocess.run(["trash", str(old_file)], check=True, capture_output=True)
+                removed_count += 1
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                # Fallback to regular delete if trash not available
+                old_file.unlink()
+                removed_count += 1
+
+    return removed_count
 
 
 def get_section_name(section_number: str) -> str:
@@ -136,8 +222,10 @@ def update_knowledge_base_sidebar(section_name: str, slugs: list[str]) -> bool:
 
     # Generate variable names from section name
     # "Communication Patterns" -> "COMMUNICATION_PATTERNS_SLUGS", "communication"
-    const_name = section_name.upper().replace(" ", "_").replace("-", "_") + "_SLUGS"
-    state_key = section_name.lower().replace(" ", "").replace("-", "")
+    # Remove parentheses and other special chars for valid JS identifiers
+    clean_name = re.sub(r"[^a-zA-Z0-9\s-]", "", section_name)
+    const_name = clean_name.upper().replace(" ", "_").replace("-", "_") + "_SLUGS"
+    state_key = clean_name.lower().replace(" ", "").replace("-", "")
 
     # Check if this section already exists
     if const_name in content:
@@ -380,6 +468,7 @@ Examples:
     python generateDeepDive.py 2.6           # Communication Patterns
     python generateDeepDive.py 2.5           # Migration Patterns
     python generateDeepDive.py 3.1 --dry-run # Preview topics only
+    python generateDeepDive.py 2.6 --force   # Regenerate even if pages exist
         """,
     )
     parser.add_argument(
@@ -390,6 +479,11 @@ Examples:
         "--dry-run",
         action="store_true",
         help="Parse and display topics without generating",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Regenerate pages even if they already exist",
     )
     parser.add_argument(
         "--workers",
@@ -416,11 +510,36 @@ Examples:
 
     logger.info(f"Section: {section_name}")
     logger.info(f"Found {len(topics)} subsections:")
-    for i, topic in enumerate(topics, 1):
-        logger.info(f"  {i}. {topic}")
+
+    # Check for existing pages and filter topics
+    topics_to_generate = []
+    skipped_results = []
+
+    for topic in topics:
+        slug = title_to_slug(topic)
+        existing = check_existing_page(slug)
+
+        if existing and not args.force:
+            logger.info(f"  - {topic} [SKIP - exists: {existing.name}]")
+            skipped_results.append(TopicResult(
+                topic=topic,
+                success=True,
+                filepath=str(existing),
+                slug=slug,
+                error="",
+                skipped=True,
+            ))
+        else:
+            status = "[FORCE regenerate]" if existing and args.force else ""
+            logger.info(f"  - {topic} {status}")
+            topics_to_generate.append(topic)
 
     if args.dry_run:
-        logger.info("Dry run complete - no guides generated")
+        logger.info(f"\nDry run complete - {len(topics_to_generate)} topics would be generated")
+        return 0
+
+    if not topics_to_generate:
+        logger.info("\nAll topics already exist. Use --force to regenerate.")
         return 0
 
     # Check API configuration
@@ -437,15 +556,16 @@ Examples:
         return 1
 
     # Generate guides in parallel
-    logger.info(f"Starting parallel generation with {args.workers} workers...")
+    logger.info(f"\nStarting generation with {args.workers} workers for {len(topics_to_generate)} topics...")
 
-    results: list[TopicResult] = []
+    results: list[TopicResult] = list(skipped_results)  # Start with skipped results
+    failed_topics: list[str] = []
 
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         # Submit all tasks
         future_to_topic = {
             executor.submit(generate_topic, topic, file_manager, i + 1): topic
-            for i, topic in enumerate(topics)
+            for i, topic in enumerate(topics_to_generate)
         }
 
         # Collect results as they complete
@@ -453,9 +573,27 @@ Examples:
             topic = future_to_topic[future]
             try:
                 result = future.result()
-                results.append(result)
+                if result.success:
+                    results.append(result)
+                else:
+                    failed_topics.append(topic)
             except Exception as e:
                 logger.error(f"Exception for {topic}: {e}")
+                failed_topics.append(topic)
+
+    # Retry failed topics once after waiting
+    if failed_topics:
+        logger.info(f"\n{len(failed_topics)} topics failed. Waiting {RETRY_WAIT_SECONDS}s before retry...")
+        time.sleep(RETRY_WAIT_SECONDS)
+        logger.info("Retrying failed topics...")
+
+        for i, topic in enumerate(failed_topics):
+            logger.info(f"Retry [{i+1}/{len(failed_topics)}]: {topic}")
+            try:
+                result = generate_topic(topic, file_manager, 100 + i)
+                results.append(result)
+            except Exception as e:
+                logger.error(f"Retry failed for {topic}: {e}")
                 results.append(TopicResult(
                     topic=topic,
                     success=False,
@@ -465,12 +603,13 @@ Examples:
                 ))
 
     # Summary
-    successful = [r for r in results if r.success]
+    successful = [r for r in results if r.success and not r.skipped]
+    skipped = [r for r in results if r.skipped]
     failed = [r for r in results if not r.success]
 
     logger.info("")
     logger.info("=" * 60)
-    logger.info(f"SUMMARY: {len(successful)}/{len(results)} topics completed successfully")
+    logger.info(f"SUMMARY: {len(successful)} generated, {len(skipped)} skipped, {len(failed)} failed")
     logger.info("=" * 60)
 
     if successful:
@@ -478,16 +617,32 @@ Examples:
         for r in successful:
             logger.info(f"  - {Path(r.filepath).name}")
 
+    if skipped:
+        logger.info("\nSkipped (already exist):")
+        for r in skipped:
+            logger.info(f"  - {r.topic}")
+
     if failed:
         logger.info("\nFailed topics:")
         for r in failed:
             logger.info(f"  - {r.topic}: {r.error}")
 
+    # Check for and clean up duplicates before sync
+    logger.info("\nChecking for duplicate files...")
+    duplicates = find_duplicates()
+    if duplicates:
+        logger.info(f"Found {len(duplicates)} slugs with duplicates. Cleaning up...")
+        removed = cleanup_duplicates()
+        logger.info(f"Removed {removed} duplicate files")
+    else:
+        logger.info("No duplicates found")
+
     # Update Knowledge Base sidebar with new section
-    if successful:
+    all_successful = [r for r in results if r.success]
+    if all_successful:
         logger.info("")
         logger.info("Updating Knowledge Base sidebar...")
-        successful_slugs = [r.slug for r in successful]
+        successful_slugs = [r.slug for r in all_successful]
         sidebar_updated = update_knowledge_base_sidebar(section_name, successful_slugs)
 
         if sidebar_updated:

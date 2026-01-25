@@ -16,6 +16,7 @@ import streamlit as st
 
 from config.settings import get_settings
 from core.pipeline import Pipeline
+from core.single_prompt_pipeline import SinglePromptPipeline
 from utils.logging_utils import RequestLogger, configure_logging
 from utils.file_utils import FileManager
 
@@ -740,6 +741,8 @@ def init_session_state() -> None:
     """Initialize Streamlit session state variables."""
     defaults = {
         "pipeline_result": None,
+        "single_prompt_result": None,
+        "generation_mode": "deep_dive",  # or "single_prompt"
         "cyrus_root": get_settings().cyrus_root_path,
         "timer_elapsed": None,
         "topic_input": "",
@@ -815,35 +818,63 @@ def render_sidebar() -> None:
 
 
 def render_output_section() -> None:
-    """Render the output section with Master Guide."""
-    result = st.session_state.pipeline_result
+    """Render the output section with Master Guide or Single Prompt result."""
+    mode = st.session_state.generation_mode
 
-    if not result:
+    if mode == "deep_dive":
+        result = st.session_state.pipeline_result
+        if not result:
+            st.markdown(
+                """
+                <div class="empty-state">
+                    <div class="empty-state-icon">📚</div>
+                    <div class="empty-state-text">Enter a topic above to generate a comprehensive guide</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            return
+
+        if not result.success:
+            st.error(f"Pipeline failed: {result.error}")
+            return
+
+        if result.low_confidence_sections > 0:
+            st.warning(
+                f"**Review Recommended:** {result.low_confidence_sections} section(s) "
+                "did not pass the Bar Raiser review after maximum attempts."
+            )
+
+        st.markdown('<div class="output-label">Generated Guide</div>', unsafe_allow_html=True)
+
+        with st.expander("View Full Guide", expanded=True):
+            st.markdown(result.master_guide)
+
+    else:  # single_prompt mode
+        result = st.session_state.single_prompt_result
+        if not result:
+            st.markdown(
+                """
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚡</div>
+                    <div class="empty-state-text">Enter a prompt above to generate content with Knowledge Base context</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            return
+
+        if not result.success:
+            st.error(f"Generation failed: {result.error}")
+            return
+
         st.markdown(
-            """
-            <div class="empty-state">
-                <div class="empty-state-icon">📚</div>
-                <div class="empty-state-text">Enter a topic above to generate a comprehensive guide</div>
-            </div>
-            """,
+            f'<div class="output-label">Generated Content ({result.context_file_count} KB docs used)</div>',
             unsafe_allow_html=True,
         )
-        return
 
-    if not result.success:
-        st.error(f"Pipeline failed: {result.error}")
-        return
-
-    if result.low_confidence_sections > 0:
-        st.warning(
-            f"**Review Recommended:** {result.low_confidence_sections} section(s) "
-            "did not pass the Bar Raiser review after maximum attempts."
-        )
-
-    st.markdown('<div class="output-label">Generated Guide</div>', unsafe_allow_html=True)
-
-    with st.expander("View Full Guide", expanded=True):
-        st.markdown(result.master_guide)
+        with st.expander("View Output", expanded=True):
+            st.markdown(result.output)
 
 
 def run_pipeline(topic: str) -> None:
@@ -857,6 +888,19 @@ def run_pipeline(topic: str) -> None:
 
     st.session_state.timer_elapsed = elapsed
     st.session_state.pipeline_result = result
+
+
+def run_single_prompt(prompt: str) -> None:
+    """Execute single prompt with Knowledge Base context."""
+    start_time = datetime.now()
+
+    pipeline = SinglePromptPipeline()
+    result = pipeline.execute(prompt)
+
+    elapsed = (datetime.now() - start_time).total_seconds()
+
+    st.session_state.timer_elapsed = elapsed
+    st.session_state.single_prompt_result = result
 
 
 # ============== MAIN ==============
@@ -901,18 +945,32 @@ def main() -> None:
         col_save, col_theme = st.columns([2, 1])
 
         with col_save:
-            result = st.session_state.pipeline_result
-            save_disabled = not (result and result.success)
+            # Determine which result to use based on mode
+            if st.session_state.generation_mode == "deep_dive":
+                result = st.session_state.pipeline_result
+                save_disabled = not (result and result.success)
+                content_to_save = result.master_guide if result else None
+                low_conf = result.low_confidence_sections if result else 0
+                mode_str = "deep_dive"
+            else:
+                result = st.session_state.single_prompt_result
+                save_disabled = not (result and result.success)
+                content_to_save = result.output if result else None
+                low_conf = 0  # Single prompt has no confidence tracking
+                mode_str = "single_prompt"
+
             if st.button("Save", disabled=save_disabled, use_container_width=True, key="save_top"):
-                if result and result.success:
+                if result and result.success and content_to_save:
                     file_manager = FileManager(st.session_state.cyrus_root)
                     success, filepath, message = file_manager.save_guide(
-                        content=result.master_guide,
-                        low_confidence_count=result.low_confidence_sections,
+                        content=content_to_save,
+                        low_confidence_count=low_conf,
+                        mode=mode_str,
                     )
                     if success:
                         st.toast(f"Saved: {filepath.split('/')[-1]}", icon="✅")
-                        RequestLogger().log_session(result)
+                        if mode_str == "deep_dive":
+                            RequestLogger().log_session(result)
                     else:
                         st.toast(f"Failed: {message}", icon="🚫")
 
@@ -938,13 +996,34 @@ def main() -> None:
         )
         st.stop()
 
+    # ===== MODE SELECTION =====
+    st.markdown('<div class="section-label">Mode</div>', unsafe_allow_html=True)
+
+    mode = st.radio(
+        "Generation Mode",
+        options=["deep_dive", "single_prompt"],
+        format_func=lambda x: "Deep Dive (4-step)" if x == "deep_dive" else "Single Prompt (with KB context)",
+        index=0 if st.session_state.generation_mode == "deep_dive" else 1,
+        horizontal=True,
+        label_visibility="collapsed",
+        key="mode_radio",
+    )
+    if mode != st.session_state.generation_mode:
+        st.session_state.generation_mode = mode
+        st.rerun()
+
     # ===== INPUT SECTION =====
-    st.markdown('<div class="section-label">Topic</div>', unsafe_allow_html=True)
+    if st.session_state.generation_mode == "deep_dive":
+        st.markdown('<div class="section-label">Topic</div>', unsafe_allow_html=True)
+        placeholder = "Enter a topic to explore...\n\nExamples:\n• Distributed consensus algorithms\n• Kubernetes architecture\n• Real-time data streaming"
+    else:
+        st.markdown('<div class="section-label">Prompt</div>', unsafe_allow_html=True)
+        placeholder = "Enter your prompt...\n\nExamples:\n• Generate Principal TPM lexicon terms for system design\n• Create a comparison table of consensus protocols\n• Summarize key SRE metrics across all documents"
 
     topic = st.text_area(
-        "Topic",
+        "Topic/Prompt",
         height=120,
-        placeholder="Enter a topic to explore...\n\nExamples:\n• Distributed consensus algorithms\n• Kubernetes architecture\n• Real-time data streaming",
+        placeholder=placeholder,
         key="topic_input",
         label_visibility="collapsed",
     )
@@ -982,17 +1061,24 @@ def main() -> None:
     with col4:
         if st.button("Clear", use_container_width=True):
             st.session_state.pipeline_result = None
+            st.session_state.single_prompt_result = None
             st.session_state.timer_elapsed = None
             st.session_state.topic_input = ""
             st.rerun()
 
     # ===== EXECUTION =====
     if start_clicked and topic.strip():
-        # Clear previous result before generating new one
+        # Clear previous results before generating new one
         st.session_state.pipeline_result = None
+        st.session_state.single_prompt_result = None
         st.session_state.timer_elapsed = None
-        with st.spinner("Generating guide..."):
-            run_pipeline(topic.strip())
+
+        if st.session_state.generation_mode == "deep_dive":
+            with st.spinner("Generating guide..."):
+                run_pipeline(topic.strip())
+        else:
+            with st.spinner("Generating with KB context..."):
+                run_single_prompt(topic.strip())
         st.rerun()
 
     st.markdown("---")

@@ -129,6 +129,7 @@ class FileManager:
         content: str,
         title: Optional[str] = None,
         low_confidence_count: int = 0,
+        mode: str = "deep_dive",
     ) -> tuple[bool, str, str]:
         """Save Master Guide to gemini-responses directory.
 
@@ -136,6 +137,7 @@ class FileManager:
             content: Markdown content to save.
             title: Optional title override.
             low_confidence_count: Number of low confidence sections.
+            mode: Generation mode - "deep_dive" or "single_prompt".
 
         Returns:
             Tuple of (success, filepath, message).
@@ -155,7 +157,7 @@ class FileManager:
         filepath = self._responses_dir / filename
 
         # Prepare content with metadata header
-        metadata = self._generate_metadata(doc_title, low_confidence_count)
+        metadata = self._generate_metadata(doc_title, low_confidence_count, mode)
         full_content = f"{metadata}\n\n{content}"
 
         try:
@@ -170,12 +172,18 @@ class FileManager:
             logger.error(error_msg)
             return False, "", error_msg
 
-    def _generate_metadata(self, title: str, low_confidence_count: int) -> str:
+    def _generate_metadata(
+        self,
+        title: str,
+        low_confidence_count: int,
+        mode: str = "deep_dive",
+    ) -> str:
         """Generate YAML frontmatter metadata.
 
         Args:
             title: Document title.
             low_confidence_count: Number of low confidence sections.
+            mode: Generation mode - "deep_dive" or "single_prompt".
 
         Returns:
             YAML frontmatter string.
@@ -187,6 +195,7 @@ class FileManager:
             f"title: \"{title}\"",
             f"generated_at: \"{timestamp}\"",
             "source: Professor Gemini",
+            f"mode: {mode}",
             f"low_confidence_sections: {low_confidence_count}",
         ]
 

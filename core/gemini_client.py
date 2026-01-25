@@ -216,6 +216,27 @@ OUTPUT FORMAT:
 
 Preserve technical depth and specific examples from the source sections. The final guide should be comprehensive and immediately actionable."""
 
+    # Single Prompt mode template - used when generating with full KB context
+    SINGLE_PROMPT_TEMPLATE = """You are a world-class technical educator preparing content for Principal TPM interviews at Mag7 companies (Google, Meta, Apple, Amazon, Microsoft, Netflix, Nvidia).
+
+You have access to a comprehensive Knowledge Base of technical content below. Use this context to inform your response where relevant.
+
+=== KNOWLEDGE BASE ({file_count} documents, {char_count:,} characters) ===
+{context}
+=== END KNOWLEDGE BASE ===
+
+USER REQUEST:
+{prompt}
+
+GUIDELINES:
+- Provide Principal-level depth (not generic or entry-level)
+- Include specific examples, trade-offs, and real-world applications
+- Reference concepts from the Knowledge Base where they add value
+- Structure your response with clear markdown formatting
+- Focus on actionable insights for interview preparation
+
+Generate a comprehensive, high-quality response."""
+
     def __init__(self) -> None:
         """Initialize Gemini client with API configuration."""
         self._settings = get_settings()
@@ -433,6 +454,35 @@ Preserve technical depth and specific examples from the source sections. The fin
         prompt = self.SYNTHESIS_PROMPT.format(sections=sections_text)
 
         return self._generate(prompt, "synthesis")
+
+    def generate_with_context(
+        self,
+        prompt: str,
+        context: str,
+        file_count: int,
+        char_count: int,
+    ) -> GeminiResponse:
+        """Generate content with Knowledge Base context.
+
+        Used by Single Prompt mode - makes a single API call with
+        the full Knowledge Base as context.
+
+        Args:
+            prompt: User's prompt/request.
+            context: Concatenated Knowledge Base content.
+            file_count: Number of KB files loaded (for logging).
+            char_count: Total characters in context (for logging).
+
+        Returns:
+            GeminiResponse with generated content.
+        """
+        full_prompt = self.SINGLE_PROMPT_TEMPLATE.format(
+            context=context,
+            prompt=prompt,
+            file_count=file_count,
+            char_count=char_count,
+        )
+        return self._generate(full_prompt, "single_prompt")
 
     # Token limits by operation type for efficiency
     # None = no limit (use model default)

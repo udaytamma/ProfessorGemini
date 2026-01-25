@@ -1,0 +1,1801 @@
+{
+  "total_additions": 295,
+  "by_category": {
+    "Data & Consistency": [
+      {
+        "term": "Idempotency",
+        "definition": "A critical design property ensuring that processing the same message multiple times yields the same state change, which is required to prevent data corruption (like double billing) in distributed systems that guarantee 'At-Least-Once' delivery.",
+        "source": "asynchronous-queues-vs-pubsub-20260120-1240.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Message Group IDs",
+        "definition": "A sharding strategy used in FIFO queues to partition messages by a specific key (e.g., UserID), enabling strict sequential ordering within a specific context while still allowing parallel processing throughput across the broader system.",
+        "source": "asynchronous-queues-vs-pubsub-20260120-1240.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Thundering Herd",
+        "definition": "A distributed systems phenomenon where a massive number of sudden requests or newly spawned nodes simultaneously overwhelm a downstream dependency (like a database connection pool), causing cascading failure.",
+        "source": "auto-scaling-strategies-20260122-1044.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Hot Shard",
+        "definition": "A critical bottleneck in sharded database architectures where uneven data distribution causes a single partition to handle disproportionate traffic, limiting the system's overall throughput despite available capacity elsewhere.",
+        "source": "auto-scaling-strategies-20260122-1044.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Control Plane vs. Data Plane Separation",
+        "definition": "The architectural decoupling of administrative workflows (configuration/policy updates) from the request-serving path, ensuring that core business transactions remain available even if the management infrastructure is offline.",
+        "source": "availability-tiers---reality-check-20260122-1032.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Consumer Lag",
+        "definition": "A critical metric in buffered systems measuring the delta between the latest data produced and the last item processed; growing lag is the primary indicator of backpressure even when API ingestion appears successful.",
+        "source": "backpressure-20260120-1301.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Functional Partitioning",
+        "definition": "A containment strategy that isolates distinct product capabilities so that a failure in a complex, non-critical subsystem (e.g., personalization) results in graceful degradation rather than a complete service outage.",
+        "source": "blast-radius-analysis-20260122-1039.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Read Amplification",
+        "definition": "A performance bottleneck in distributed databases where a single logical read request triggers multiple physical disk I/O operations; Bloom Filters mitigate this by allowing the system to skip disk seeks for data that is definitively not present.",
+        "source": "bloom-filters-20260121-1947.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Cache Penetration",
+        "definition": "A specific failure mode where requests for non-existent keys bypass the caching layer and saturate the primary database; Bloom Filters prevent this by rejecting invalid keys at the edge before they touch the persistence layer.",
+        "source": "bloom-filters-20260121-1947.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Counting Bloom Filters",
+        "definition": "An architectural variant that uses counters instead of single bits to allow for item deletion, requiring a trade-off decision to accept 3x-4x higher memory overhead in exchange for mutable dataset support.",
+        "source": "bloom-filters-20260121-1947.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Log-Structured Merge-trees (LSM Trees)",
+        "definition": "The write-optimized data structure underlying Mag7 databases like BigTable and Cassandra, which relies heavily on Bloom Filters to prevent high-latency scans of immutable disk files (SSTables) during read operations.",
+        "source": "bloom-filters-20260121-1947.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Shadow Mode (Dark Reads)",
+        "definition": "A risk-mitigation technique where production traffic triggers both legacy and new code paths asynchronously, returning only the legacy result to the user while verifying the new path for data parity in the background.",
+        "source": "branch-by-abstraction-20260120-0919.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Control Plane Isolation",
+        "definition": "The segregation of administrative resources from user traffic (Data Plane) to ensure operators retain access to issue commands and fix systems even during high-traffic events or outages.",
+        "source": "bulkhead-pattern-20260120-1301.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Split Brain",
+        "definition": "A critical failure mode in distributed clusters where network isolation causes two separate subsets of nodes to independently declare themselves the active leader, leading to divergent write histories and difficult data reconciliation.",
+        "source": "cap-theorem---practical-understanding-20260119-0836.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Tunable Consistency",
+        "definition": "An architectural capability (common in systems like DynamoDB) allowing the client to select either Strong or Eventual consistency per request, shifting the trade-off between infrastructure cost, latency, and data accuracy to the application layer.",
+        "source": "cap-theorem---practical-understanding-20260119-0836.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "CRDTs (Conflict-free Replicated Data Types)",
+        "definition": "A specialized data structure logic used in AP systems that mathematically guarantees independent updates made on partitioned nodes can be merged automatically without conflicts or data loss when the network heals.",
+        "source": "cap-theorem---practical-understanding-20260119-0836.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Dual Write Problem",
+        "definition": "A distributed system failure mode where an application attempts to simultaneously commit to a database and publish an event; if one action fails, the system enters an inconsistent state, serving as the primary architectural driver for adopting CDC.",
+        "source": "change-data-capture-cdc-20260120-0919.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Write-Ahead Log (WAL)",
+        "definition": "The internal, append-only storage structure (e.g., Binlog in MySQL) used by CDC connectors to extract state changes fundamentally faster and with less overhead than query-based polling.",
+        "source": "change-data-capture-cdc-20260120-0919.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "CQRS (Command Query Responsibility Segregation)",
+        "definition": "An architectural pattern enabled by CDC that separates the write model (Commands) from the read model (Queries), allowing a system to stream data from a transactional DB to specialized read replicas or search indices.",
+        "source": "change-data-capture-cdc-20260120-0919.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Schema Registry",
+        "definition": "A governance component that acts as a strict contract between data producers and consumers, managing schema evolution (e.g., Avro/Protobuf) to prevent pipeline outages caused by unannounced data structure changes.",
+        "source": "change-data-capture-cdc-20260120-0919.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Crypto-shredding",
+        "definition": "A technique to achieve 'Right to Erasure' compliance in immutable storage systems (like backups) by encrypting specific user data with unique keys and subsequently deleting those keys to render the data permanently unrecoverable.",
+        "source": "compliance-data-sovereignty-20260122-0729.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Origin Shield",
+        "definition": "An intermediate architectural layer between Edge PoPs and the Origin infrastructure that aggregates misses to increase cache hit ratios and protect backend databases from scaling exponentially with user growth.",
+        "source": "content-delivery-networks-cdn-20260116-1237.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Request Coalescing",
+        "definition": "A traffic management mechanism (also known as Collapsed Forwarding) that combines multiple concurrent requests for the same cache-miss object into a single Origin request, preventing 'Thundering Herd' events from crashing the backend.",
+        "source": "content-delivery-networks-cdn-20260116-1237.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Heavy Hitters",
+        "definition": "Items in a data stream that appear with high frequency (e.g., viral search queries or attacking IPs); CMS is specifically architected to separate these signals from the 'long tail' noise of unique elements without consuming linear memory.",
+        "source": "count-min-sketch-20260121-1947.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Lakehouse Architecture",
+        "definition": "A hybrid data platform that combines the low-cost object storage of a Data Lake with the transactional reliability (ACID) and performance of a Data Warehouse, enabled by a metadata layer like Apache Iceberg or Delta Lake.",
+        "source": "data-architecture-patterns-20260121-1949.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Schema-on-Read",
+        "definition": "A flexible data strategy where raw data is ingested without a predefined structure, and the schema is applied only during query time, prioritizing ingestion speed and experimentation over immediate consistency.",
+        "source": "data-architecture-patterns-20260121-1949.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Derivative Classification",
+        "definition": "The automated logic within ETL and data pipelines that assigns sensitivity tags to downstream datasets based on the highest classification level of the source inputs, ensuring governance persists through data transformations.",
+        "source": "data-classification-framework-20260122-1035.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Multi-Party Authorization (MPA)",
+        "definition": "A strict access control mechanism for Restricted data requiring distinct approvals from multiple authorized roles (e.g., a manager and a security engineer) to grant temporary, Just-In-Time access, designed to mitigate insider threats.",
+        "source": "data-classification-framework-20260122-1035.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Purpose-Based Access Control (PBAC)",
+        "definition": "An advanced authorization model where data access requires a verified business justification (e.g., an active incident ticket) bound to the request, preventing unauthorized exploration even by privileged engineers.",
+        "source": "data-governance-privacy-20260123-1047.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Tokenization Vault",
+        "definition": "A centralized, isolated service that intercepts sensitive data at the ingestion edge and replaces it with non-sensitive tokens, ensuring PII is cryptographically segregated from downstream data lakes and analytics pipelines.",
+        "source": "data-governance-privacy-20260123-1047.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Head-of-Line (HOL) Blocking",
+        "definition": "A performance bottleneck in TCP and HTTP/2 where the loss of a single packet halts the processing of all subsequent data streams until retransmission occurs. Principal TPMs address this by adopting QUIC (HTTP/3), which processes UDP streams independently to prevent packet loss in one stream from stalling the entire connection.",
+        "source": "data-transfer-optimization-20260122-0951.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "The Celebrity Problem",
+        "definition": "A failure mode caused by extreme data skew where a single high-traffic key (hot partition) saturates a specific shard's IOPS, creating 'noisy neighbor' outages for unrelated users on the same hardware.",
+        "source": "database-sharding-strategies-20260119-0837.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "EDNS Client Subnet (ECS)",
+        "definition": "A DNS extension allowing recursive resolvers to pass a truncated client IP to authoritative servers, solving the 'Last Mile' problem by ensuring users are routed to data centers near their physical location, not their resolver's location.",
+        "source": "dns-architecture-20260116-1239.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Negative Caching",
+        "definition": "The behavior where resolvers cache the absence of a record (NXDOMAIN) based on the SOA Minimum TTL, which can block users from accessing a service for extended periods even after a configuration error is resolved.",
+        "source": "dns-architecture-20260116-1239.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Shadow Reads (Dark Reads)",
+        "definition": "A risk-mitigation strategy where live production traffic is routed to both the legacy and new data stores, but only the legacy result is returned to the user; this allows for performance profiling and data parity verification without impacting customer experience.",
+        "source": "dual-write-dual-read-pattern-20260120-0919.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Change Data Capture (CDC)",
+        "definition": "An infrastructure-level pattern that enables asynchronous dual-writing by reading the source database's transaction logs (e.g., binlogs, WAL) and replicating changes to the target, effectively decoupling user latency from the migration process.",
+        "source": "dual-write-dual-read-pattern-20260120-0919.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Read-Your-Write Consistency",
+        "definition": "A consistency guarantee often compromised in asynchronous replication models; a Principal TPM must identify if users risk seeing stale data immediately after an update due to replication lag and implement mitigations like sticky routing.",
+        "source": "dual-write-dual-read-pattern-20260120-0919.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Reconciliation (Reconciler)",
+        "definition": "A critical background process required to solve the 'split-brain' problem in non-atomic dual-writes, which continuously compares data samples between source and target to detect and repair silent divergence before the final cutover.",
+        "source": "dual-write-dual-read-pattern-20260120-0919.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Confidential Computing",
+        "definition": "A hardware-enforced security paradigm (e.g., AWS Nitro Enclaves) that protects 'Data in Use' by processing it within isolated memory environments, ensuring even the cloud provider's hypervisor cannot view the raw data.",
+        "source": "encryption-strategy-20260121-1953.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Orthogonal Layering",
+        "definition": "A system design architecture that partitions user traffic into non-overlapping conceptual dimensions (e.g., UI, Ranking, Ads), allowing thousands of concurrent experiments to run on the same user without data pollution by ensuring independent randomization parameters for each layer.",
+        "source": "experimentation-platforms-20260123-1059.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Sharding",
+        "definition": "The process of horizontally partitioning data across multiple nodes by a specific key (e.g., UserID) to achieve linear write scaling, often at the cost of increased complexity regarding cross-shard transactions and consistency.",
+        "source": "horizontal-scaling-patterns-20260122-1042.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "High Cardinality Explosion",
+        "definition": "A critical infrastructure failure mode in observability and metrics systems where adding unique tags (like User IDs) creates infinite time-series entries, leading to database crashes and excessive storage costs.",
+        "source": "hyperloglog-hll-20260121-1947.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Lossless Merging",
+        "definition": "The architectural capability to combine independent HLL sketches from distributed shards via bitwise operations, enabling global unique counts without transferring raw data or increasing error rates.",
+        "source": "hyperloglog-hll-20260121-1947.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Registers (Buckets)",
+        "definition": "The memory units used to store the maximum leading zeros for substreams of data; tuning the number of registers allows a TPM to trade off memory footprint (e.g., 12KB) against the standard error rate (e.g., 0.81%).",
+        "source": "hyperloglog-hll-20260121-1947.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Optimistic Locking",
+        "definition": "A database concurrency control pattern using conditional writes (e.g., 'insert only if not exists') to prevent race conditions when simultaneous requests with the same Idempotency Key attempt to modify state.",
+        "source": "idempotency---critical-concept-20260120-1240.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Fencing Token",
+        "definition": "A monotonically increasing generation ID (or Epoch) used to validate write requests, ensuring that a 'Zombie Leader' recovering from a pause cannot overwrite data committed by a newly elected leader.",
+        "source": "leader-election-20260120-1255.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "PagedAttention",
+        "definition": "A memory management algorithm inspired by OS virtual memory that allocates Key-Value (KV) cache in non-contiguous blocks, eliminating memory fragmentation to maximize batch size and concurrency.",
+        "source": "llm-serving-considerations-20260121-1949.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Hot Shards",
+        "definition": "A scalability bottleneck where specific partition keys (e.g., a celebrity UserID) attract disproportionate traffic that standard hashing cannot distribute, often necessitating virtual nodes or traffic segregation.",
+        "source": "load-balancing-deep-dive-20260116-1239.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Materialization",
+        "definition": "The computing process of transforming raw data into feature values and pushing them to the Online Store, requiring strategic tradeoffs between batch (low cost) and streaming (real-time freshness) implementations.",
+        "source": "mlops-pipeline-20260121-1949.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Bi-directional Replication",
+        "definition": "A complex data synchronization requirement for Active-Active systems where writes occur in multiple regions simultaneously, necessitating conflict resolution strategies (e.g., vector clocks, last-write-wins) to reconcile divergent data states.",
+        "source": "multi-region-architecture-20260123-1057.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Read-Your-Writes Consistency",
+        "definition": "A consistency model used to mitigate the UX impact of eventual consistency in multi-region apps, ensuring that a user immediately sees their own updates (often via sticky sessions) even if the data hasn't yet replicated globally.",
+        "source": "multi-region-architecture-20260123-1057.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Split-Brain Syndrome",
+        "definition": "A catastrophic distributed systems failure where a network partition causes two separate regions to simultaneously believe they are the 'Active' primary, accepting conflicting writes that result in data corruption requiring manual reconciliation.",
+        "source": "multi-region-patterns-20260120-1302.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Geo-Sharding",
+        "definition": "A data partitioning strategy where user data is pinned to specific physical geographic regions to comply with Data Sovereignty laws, often requiring distinct infrastructure isolation and complicating global identity management.",
+        "source": "multi-region-patterns-20260120-1302.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "State Divergence",
+        "definition": "The fundamental risk in distributed systems where nodes disagree on current truth (e.g., leader identity), requiring consensus protocols to prevent data corruption or double-processing.",
+        "source": "paxos-and-raft-20260120-1256.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Linearizable Read",
+        "definition": "A strict consistency pattern where read requests are routed through the cluster Leader to guarantee the latest data, sacrificing throughput and latency compared to stale reads from Followers.",
+        "source": "paxos-and-raft-20260120-1256.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Format-Preserving Encryption (FPE)",
+        "definition": "A cryptographic method used in tokenization where the output token retains the same structure (e.g., 16 digits) as the original data, allowing legacy systems to process secure tokens without data-type validation failures.",
+        "source": "pci-dss-for-payment-systems-20260122-1036.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Scope Reduction",
+        "definition": "The strategic architectural objective of minimizing the systems that touch Cardholder Data (CHD) to lower compliance costs (moving from SAQ D to SAQ A) and operational overhead.",
+        "source": "pci-dss-for-payment-systems-20260122-1036.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Smart Routing",
+        "definition": "dynamic logic within a Payment Orchestration Layer that directs transactions to specific PSPs based on variables like cost, acceptance rates, and geography to optimize margins and authorization uplift.",
+        "source": "pci-dss-for-payment-systems-20260122-1036.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Hanging GET",
+        "definition": "The underlying mechanism of Long Polling where the server deliberately holds an HTTP request open until data becomes available or a timeout occurs, simulating a push interaction over standard HTTP.",
+        "source": "real-time-polling-vs-websockets-20260120-1240.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Semi-Synchronous Replication",
+        "definition": "A replication strategy where the Leader waits for acknowledgment from at least one Follower before confirming a write, becoming the 'Mag7 Standard' by balancing data durability with write availability.",
+        "source": "replication-patterns-20260119-0837.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Read-Your-Own-Writes",
+        "definition": "A consistency guarantee that ensures a user immediately sees their own updates after submitting them, often implemented by routing specific user reads to the Leader for a short window to mitigate replication lag artifacts.",
+        "source": "replication-patterns-20260119-0837.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Write-Ahead Log (WAL) Shipping",
+        "definition": "A replication method where the exact byte-level changes from the Leader's log are sent to Followers; it guarantees exact data replicas for high-integrity systems but tightly couples the database versions of the Leader and Follower.",
+        "source": "replication-patterns-20260119-0837.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Idempotency Keys",
+        "definition": "A unique client-generated identifier (UUID) passed with state-changing operations that allows servers to deduplicate requests, ensuring that automatic retries do not result in double-processing or data corruption.",
+        "source": "retry-strategies-20260120-1301.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Sharding (Horizontal Partitioning)",
+        "definition": "A database scaling strategy that distributes data across multiple nodes based on a specific key, enabling write throughput beyond a single server's capacity at the cost of operational complexity and expensive cross-shard queries.",
+        "source": "scaling-architecture-20260122-0729.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Write-Behind Caching",
+        "definition": "A caching strategy where data is written to the cache immediately and asynchronously persisted to the database, offering the lowest write latency but introducing the risk of data loss if the cache fails before persistence.",
+        "source": "scaling-architecture-20260122-0729.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Processing Integrity",
+        "definition": "A specialized Trust Services Criterion often reserved for Fintech or billing systems that validates input-to-output accuracy through strict transactional consistency and automated reconciliation jobs.",
+        "source": "soc-2---trust-framework-20260122-1036.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "CP vs. AP Architecture",
+        "definition": "A strategic design choice based on the CAP theorem where a system must prioritize either Consistency (rejecting writes during network partitions to ensure accuracy) or Availability (accepting writes to ensure uptime despite potential data staleness).",
+        "source": "sql-vs-nosql---the-real-trade-offs-20260119-0830.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Two-Phase Commit (2PC)",
+        "definition": "A synchronous distributed protocol used to maintain ACID guarantees across multiple database shards, which introduces significant latency and blocking risks by requiring all participating nodes to lock resources before committing.",
+        "source": "sql-vs-nosql---the-real-trade-offs-20260119-0830.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Vector Clocks",
+        "definition": "A logical clock mechanism used in eventual consistency models to track the causal ordering of events, allowing the system to accurately reconcile conflicting data versions resulting from 'split-brain' scenarios.",
+        "source": "sql-vs-nosql---the-real-trade-offs-20260119-0830.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Cursor-based Pagination",
+        "definition": "A scalable data retrieval pattern that uses an opaque pointer to the last record seen instead of `OFFSET/LIMIT`, preventing database performance degradation when querying deep into massive datasets.",
+        "source": "synchronous-rest-vs-grpc-vs-graphql-20260120-1240.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "One-Way Door (Type 1 Decision)",
+        "definition": "A high-stakes, irreversible technical decision (e.g., database selection, public API contracts) that requires rigorous scrutiny, data modeling, and often VP-level sign-off due to the prohibitive cost of reversal.",
+        "source": "technical-strategy-rfc-process-20260123-1053.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Nemawashi",
+        "definition": "The informal process of laying the groundwork and building consensus with stakeholders via 1:1s prior to a formal RFC review to prevent meeting stalls and ensure cross-functional alignment.",
+        "source": "technical-strategy-rfc-process-20260123-1053.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "CAP Theorem",
+        "definition": "A distributed systems principle stating that a system cannot simultaneously provide Consistency, Availability, and Partition Tolerance; used by TPMs to drive business trade-offs (e.g., choosing strong consistency for payments vs. availability for social features).",
+        "source": "technical-strategy-rfc-process-20260123-1053.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Joint Consensus",
+        "definition": "A complex configuration change protocol that allows a cluster to dynamically add or remove nodes (scaling) without service interruption by requiring agreement from a majority of both the old and new configurations.",
+        "source": "the-consensus-problem-20260120-1255.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Cardinality Explosion",
+        "definition": "A critical failure mode in time-series databases caused by an excessive number of unique metric combinations (e.g., tagging metrics with `user_id`), which drives exponential cost and performance degradation; requires strict governance to route high-cardinality data to logs instead of metrics.",
+        "source": "the-three-pillars---deep-dive-20260121-1951.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "OpenTelemetry (OTel)",
+        "definition": "An open-source observability framework used to standardize the generation and collection of telemetry data across heterogeneous services, serving as a strategic governance tool to ensure metric consistency and prevent vendor lock-in at the collection layer.",
+        "source": "the-three-pillars---deep-dive-20260121-1951.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Cross-Encoder Reranking",
+        "definition": "A high-precision, computationally intensive post-retrieval step that re-scores and re-orders the top results from the vector database to maximize relevance before the data enters the LLM context window.",
+        "source": "vector-databases-and-rag-20260121-1949.md",
+        "category": "Data & Consistency"
+      },
+      {
+        "term": "Cold Cache Brownout",
+        "definition": "A post-restart scenario where a vertically scaled database is technically online but functionally unresponsive (violating SLAs) for an extended period while it re-reads data from disk to warm up its RAM cache.",
+        "source": "vertical-scaling-limits-20260122-1041.md",
+        "category": "Data & Consistency"
+      }
+    ],
+    "Reliability & SLA Engineering": [
+      {
+        "term": "Burn Rate Alerting",
+        "definition": "An advanced alerting logic that triggers based on the speed at which the Error Budget is being consumed rather than static thresholds, enabling the detection of slow degradations (the 'Boiling Frog' scenario) while minimizing alert fatigue.",
+        "source": "alerting-best-practices-20260121-1951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Symptom-Based Alerting",
+        "definition": "A monitoring philosophy that triggers alerts based on user-facing pain (high latency, elevated error rates) rather than underlying infrastructure causes (high CPU), ensuring high signal fidelity and reducing false positives.",
+        "source": "alerting-best-practices-20260121-1951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Four Golden Signals",
+        "definition": "The industry-standard metrics derived from Google SRE methodology\u2014Latency, Traffic, Errors, and Saturation\u2014used as the foundational framework for defining Service Level Indicators (SLIs) and dashboarding.",
+        "source": "alerting-best-practices-20260121-1951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Critical User Journeys (CUJs)",
+        "definition": "High-priority, multi-step user workflows (e.g., 'Checkout') used to define Composite SLOs, ensuring that reliability is measured against end-to-end business value rather than isolated component availability.",
+        "source": "alerting-best-practices-20260121-1951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Tier-0 Service",
+        "definition": "An architectural classification for critical dependencies like Identity where an outage results in total platform failure, requiring active-active regional replication and 99.999% availability to support downstream product SLAs.",
+        "source": "authentication-vs-authorization-20260121-1953.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Efficient Frontier",
+        "definition": "The optimal strategic curve in infrastructure planning where availability is maximized while financial waste is minimized, requiring Principal TPMs to balance P&L impact against strict SLA compliance.",
+        "source": "auto-scaling-strategies-20260122-1044.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Dependency Inversion (Availability)",
+        "definition": "An architectural anti-pattern where a high-availability (Tier 1) service takes a synchronous, hard dependency on a lower-tier service, mathematically capping the superior service's uptime to that of its weakest link.",
+        "source": "availability-tiers---reality-check-20260122-1032.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Tier Drift",
+        "definition": "The gradual erosion of a service's availability posture caused by the introduction of hidden dependencies or configuration changes over time, typically detected via Chaos Engineering rather than standard monitoring.",
+        "source": "availability-tiers---reality-check-20260122-1032.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "PACELC Theorem",
+        "definition": "An extension of CAP that provides a more complete architectural view: if a Partition (P) occurs, the system chooses Availability (A) or Consistency (C); Else (E) during normal operation, it must trade off Latency (L) or Consistency (C).",
+        "source": "cap-theorem---practical-understanding-20260119-0836.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Shape Model",
+        "definition": "A resource profiling framework that translates high-level business metrics (e.g., DAU, transactions) into low-level infrastructure primitives (Cores, IOPS, RAM) to accurately forecast the hardware footprint of specific user behaviors.",
+        "source": "capacity-planning-20260123-1051.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Data Gravity",
+        "definition": "An architectural constraint where large datasets attract applications and services to their location, as moving the data elsewhere incurs prohibitive latency penalties and high cloud egress fees.",
+        "source": "capex-vs-opex-mental-model-20260122-0953.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Failure Injection Testing (FIT)",
+        "definition": "A precise methodology of injecting specific faults (like latency or error headers) into specific request paths to verify graceful degradation, contrasting with the blunt force of merely terminating instances.",
+        "source": "chaos-engineering-20260120-1301.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Game Days",
+        "definition": "Structured operational exercises where engineering teams validate service resilience against simulated failures (such as AZ loss or dependency latency) to verify architectural assumptions and ensure teams are prepared for real-world incidents.",
+        "source": "chaos-engineering-resilience-20260123-1055.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Composite Availability",
+        "definition": "The aggregate reliability metric of a distributed system, calculated by multiplying the availability of serial dependencies and determining the joint failure probability of parallel, redundant components.",
+        "source": "composite-sla-calculation-20260122-1032.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Serial Dependency",
+        "definition": "An architectural coupling where services execute in a linear chain, causing the total system availability to equal the product of all individual component availabilities, creating a 'multiplicative penalty' on uptime.",
+        "source": "composite-sla-calculation-20260122-1032.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Soft Dependency",
+        "definition": "A non-critical service integration that utilizes circuit breakers or default fallbacks to ensure that downstream failures result in graceful degradation rather than a breach of the core transactional SLA.",
+        "source": "composite-sla-calculation-20260122-1032.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Correlated Failure",
+        "definition": "A risk scenario where redundant components fail simultaneously due to shared underlying infrastructure (like a shared SAN or Availability Zone), invalidating the mathematical uptime benefits of parallel redundancy.",
+        "source": "composite-sla-calculation-20260122-1032.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Direct Peering",
+        "definition": "A strategic network topology where content providers bypass public internet transit to physically interconnect directly with ISPs (e.g., Netflix Open Connect), significantly reducing egress costs and minimizing latency.",
+        "source": "content-delivery-networks-cdn-20260116-1237.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Sub-linear Scaling",
+        "definition": "An architectural state where infrastructure costs grow at a slower rate than user traffic (e.g., 10x traffic results in only 4x cost), typically achieved through caching layers, multi-tenancy, and shared storage rather than 1:1 stateless scaling.",
+        "source": "cost-model-fundamentals-20260122-0939.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Data Locality",
+        "definition": "A system design optimization ensuring requests are routed to backends in the same Availability Zone or Region as their data, specifically intended to eliminate high-volume cross-AZ egress fees and reduce latency.",
+        "source": "cost-model-fundamentals-20260122-0939.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Width ($w$) vs. Depth ($d$)",
+        "definition": "The configuration parameters used to negotiate the tradeoff between infrastructure cost and data quality; Width determines the error magnitude (RAM cost), while Depth determines the confidence probability (CPU/Latency cost).",
+        "source": "count-min-sketch-20260121-1947.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Temporal Decay",
+        "definition": "Strategies such as sliding windows or counter halving applied to a CMS to handle infinite streams, ensuring that historical heavy hitters do not dominate current metrics in real-time systems like trending topics.",
+        "source": "count-min-sketch-20260121-1947.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Watermarks",
+        "definition": "A streaming system mechanism that defines the temporal threshold for waiting on late-arriving data, serving as a critical control lever for balancing the trade-off between result latency and data completeness.",
+        "source": "data-architecture-patterns-20260121-1949.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Backpressure",
+        "definition": "A flow control mechanism in stream processing that prevents system failure during traffic spikes by signaling upstream components to slow down ingestion when the processing rate cannot keep up.",
+        "source": "data-architecture-patterns-20260121-1949.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Asynchronous (Out-of-Band) Classification",
+        "definition": "An architectural pattern where data is committed to storage immediately to prioritize write latency, with scanning and tagging occurring via background events, accepting a brief 'risk window' of exposure in exchange for high-velocity ingestion.",
+        "source": "data-classification-framework-20260122-1035.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Active Metadata Platform",
+        "definition": "An event-driven architecture that programmatically harvests, ranks, and propagates metadata from infrastructure changes and usage logs, transforming static data catalogs into real-time discovery and observability systems.",
+        "source": "data-governance-privacy-20260123-1047.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "QUIC",
+        "definition": "A UDP-based transport protocol that underpins HTTP/3, moving congestion control to user space to enable features like Connection Migration and independent stream processing. It is a strategic lever for Mag7 mobile applications to reduce latency on lossy networks (3G/4G) and eliminate the overhead of TCP/TLS handshakes.",
+        "source": "data-transfer-optimization-20260122-0951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "0-RTT Resumption",
+        "definition": "A TLS 1.3 optimization that allows returning clients to send data in the very first packet of a connection, effectively eliminating network latency for the handshake. Principal TPMs must balance this performance gain against security risks, specifically 'Replay Attacks,' by ensuring it is only enabled for idempotent requests.",
+        "source": "data-transfer-optimization-20260122-0951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Sidecar Collector",
+        "definition": "An architectural pattern where a lightweight process runs alongside application containers to offload data validation, PII scrubbing, and buffering, serving as a decentralized control plane to manage observability overhead.",
+        "source": "distributed-tracing-architecture-20260121-1951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Anycast",
+        "definition": "A network addressing scheme where a single IP is advertised via BGP from multiple locations, automatically routing users to the topologically nearest node to reduce latency and absorb DDoS attacks across global infrastructure.",
+        "source": "dns-architecture-20260116-1239.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "The Social Contract",
+        "definition": "A pre-negotiated governance policy between Product and Engineering that strictly delineates when to prioritize 'Permission to Fail' (feature velocity) versus the 'Obligation to Stabilize' (reliability work) based on quantitative error budget consumption.",
+        "source": "error-budgets---practical-application-20260122-1033.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Gold Plating",
+        "definition": "A strategic anti-pattern where a service consistently achieves significantly higher reliability than its SLO requires (e.g., 100% vs 99.9%), signaling wasted capital on infrastructure and a missed opportunity to utilize the budget for faster release velocity or experimentation.",
+        "source": "error-budgets---practical-application-20260122-1033.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Budget Bankruptcy",
+        "definition": "A governance mechanism used when a team is mathematically unable to recover their error budget within a window, allowing for a budget reset in exchange for a committed 'Reliability Sprint' or specific architectural overhaul to address systemic root causes.",
+        "source": "error-budgets---practical-application-20260122-1033.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Error Budgets",
+        "definition": "A governance mechanism defining the allowable margin of unreliability (1 - Target Availability); when exhausted, it triggers a mandatory freeze on feature releases to prioritize stability.",
+        "source": "expected-loss-calculation-20260122-1038.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Sample Ratio Mismatch (SRM)",
+        "definition": "A critical data integrity failure where the observed traffic split between Control and Treatment deviates statistically from the configured ratio, serving as a 'check engine light' that typically indicates upstream engineering defects like latency timeouts, crashes, or bot filtering errors.",
+        "source": "experimentation-platforms-20260123-1059.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Global Holdout",
+        "definition": "A persistent slice of traffic excluded from all new features for an extended duration (6-12 months) to measure the cumulative long-term impact of the product roadmap and detect aggregate performance degradation ('death by a thousand cuts') that individual experiments miss.",
+        "source": "experimentation-platforms-20260123-1059.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "IP Anycast",
+        "definition": "A network addressing methodology where a single IP address is announced via BGP from multiple global locations, allowing the internet to automatically route traffic to the topologically nearest Point of Presence (PoP) for reduced latency and inherent DDoS mitigation.",
+        "source": "geo-routing-20260120-1301.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Geo-Fencing",
+        "definition": "A hard-boundary routing logic driven by legal compliance (e.g., GDPR, data sovereignty) rather than latency, which forces Principal TPMs to make strategic 'fail closed' decisions that prioritize legal adherence over high availability during regional outages.",
+        "source": "geo-routing-20260120-1301.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Map-Side Aggregation",
+        "definition": "A distributed computing optimization enabled by HLL where local shards compute sketches before transfer, replacing 'shuffle-heavy' raw ID transfers with lightweight binary merges to minimize network latency.",
+        "source": "hyperloglog-hll-20260121-1947.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Tail Latency",
+        "definition": "The high-percentile response times (p99, p99.9) experienced by the slowest requests, which disproportionately affect 'power users' in distributed systems and define the true floor of user experience.",
+        "source": "latency-physics-20260120-1301.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "The Fan-Out Problem",
+        "definition": "A microservices architectural challenge where a single user request triggers parallel calls to multiple downstream services, causing the total system latency to be bound by the slowest service in the chain.",
+        "source": "latency-physics-20260120-1301.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Hedged Requests",
+        "definition": "A latency mitigation strategy used by companies like Google where a secondary request is sent to a different replica if the initial request exceeds a specific percentile threshold (e.g., p95), utilizing the first response received.",
+        "source": "latency-physics-20260120-1301.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "0-RTT (Zero Round Trip Time)",
+        "definition": "A protocol optimization found in HTTP/3 and QUIC that allows returning clients to resume sessions and send application data immediately, eliminating the latency of standard TCP/TLS handshakes.",
+        "source": "latency-physics-20260120-1301.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Speculative Decoding",
+        "definition": "A latency optimization strategy where a smaller 'draft' model predicts tokens that are verified in parallel by the target model, trading compute overhead for reduced memory-bandwidth bottlenecks.",
+        "source": "llm-serving-considerations-20260121-1949.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Blast Radius Containment",
+        "definition": "A reliability strategy utilizing 'Shared-Nothing' regional architectures to ensure that faults, such as bad deployments or configuration errors, are isolated to a single location and cannot propagate to impact global availability.",
+        "source": "multi-region-patterns-20260120-1302.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "QUIC (Quick UDP Internet Connections)",
+        "definition": "A transport protocol built on top of UDP that enforces reliability and security in user space rather than kernel space to solve TCP's blocking issues. It is the foundation of HTTP/3 and is essential for optimizing user experience on lossy networks (e.g., emerging markets).",
+        "source": "protocol-fundamentals-20260116-1239.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "On-Demand Capacity Reservations (ODCRs)",
+        "definition": "A mechanism that guarantees physical hardware availability for critical events by paying for the slot regardless of usage, distinguishing actual capacity assurance from billing-only financial instruments like Savings Plans.",
+        "source": "reserved-vs-spot-strategy-20260122-0949.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Hedge Requests",
+        "definition": "A high-performance strategy that sends a speculative secondary request to a different replica if the primary request exceeds a P95 latency threshold, intentionally trading resource amplification for reduced tail latency.",
+        "source": "retry-strategies-20260120-1301.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Annualized Loss Expectancy (ALE)",
+        "definition": "A quantitative framework (ALE = Annual Rate of Occurrence \u00d7 Single Loss Expectancy) used to translate technical risks into financial terms, enabling Principal TPMs to calculate ROI for reliability or security investments.",
+        "source": "risk-quantification-20260122-0729.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Service Level Objective (SLO)",
+        "definition": "The internal target value for a service level indicator that defines the boundary between acceptable and unacceptable performance, distinct from and stricter than the external SLA to provide an operational safety buffer.",
+        "source": "sla-mathematics-reliability-20260122-0729.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Critical User Journey (CUJ)",
+        "definition": "A reliability scoping framework where SLOs are defined against specific, high-value end-to-end user workflows rather than individual services, ensuring reliability metrics align directly with business impact.",
+        "source": "sla-mathematics-reliability-20260122-0729.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Tail Latency (P99/P99.9)",
+        "definition": "A statistical approach measuring the performance of the slowest outliers (the 99th or 99.9th percentile) rather than averages, crucial for Mag7 systems to protect 'power users' who process large datasets and represent the highest business value.",
+        "source": "sloslasli---precision-matters-20260122-1031.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Composite SLI",
+        "definition": "An aggregated metric that measures the success of a multi-service dependency chain as a single unit (e.g., Identity + Inventory + Payments), used for executive-level alerting to reflect true business availability across microservices.",
+        "source": "sloslasli---precision-matters-20260122-1031.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Retry Storm",
+        "definition": "A destructive feedback loop where service latency triggers client timeouts and subsequent retries, artificially inflating traffic and saturation until the system enters a non-recoverable cascading failure state.",
+        "source": "the-golden-signals-google-sre-20260121-1951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "The Four Golden Signals",
+        "definition": "The Google SRE standard framework for monitoring distributed systems\u2014Latency, Traffic, Errors, and Saturation\u2014used as the foundation for defining Service Level Objectives (SLOs) and distinguishing between user-facing symptoms and infrastructure capacity limits.",
+        "source": "the-three-pillars---deep-dive-20260121-1951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "Sidecar Pattern",
+        "definition": "An architectural pattern where observability agents (like Envoy or OTel collectors) run alongside application containers to abstract telemetry logic from business logic, enabling TPMs to drive standardized instrumentation updates without requiring code changes from product teams.",
+        "source": "the-three-pillars---deep-dive-20260121-1951.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "HNSW (Hierarchical Navigable Small World)",
+        "definition": "The industry-standard indexing algorithm for Approximate Nearest Neighbor (ANN) search that creates a multi-layered graph structure to balance high recall with sub-millisecond retrieval latency at scale.",
+        "source": "vector-databases-and-rag-20260121-1949.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "NUMA Cliff (Non-Uniform Memory Access)",
+        "definition": "A performance degradation point in massive multi-socket instances where accessing RAM across CPU sockets incurs latency penalties, causing non-linear scaling where adding cores yields diminishing returns due to interconnect saturation.",
+        "source": "vertical-scaling-limits-20260122-1041.md",
+        "category": "Reliability & SLA Engineering"
+      },
+      {
+        "term": "GC Wall (Garbage Collection Wall)",
+        "definition": "The practical limit of usable RAM for managed languages (like Java) where the 'Stop-the-World' pause required to scan the heap exceeds SLA tolerances, causing application freezes despite abundant physical memory availability.",
+        "source": "vertical-scaling-limits-20260122-1041.md",
+        "category": "Reliability & SLA Engineering"
+      }
+    ],
+    "Architectural Strategy": [
+      {
+        "term": "Consumer-Driven Contracts (CDC)",
+        "definition": "A testing pattern where API consumers define their expectations via contract tests (e.g., Pact) that block the producer's deployment pipeline if broken, preventing integration failures in distributed microservice environments.",
+        "source": "api-lifecycle-management-20260123-1102.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Fan-out Ratio",
+        "definition": "An architectural efficiency metric measuring the number of downstream microservice calls triggered by a single ingress request, where a high ratio indicates latency risks and the need for aggregation patterns like GraphQL.",
+        "source": "api-lifecycle-management-20260123-1102.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Mutual TLS (mTLS)",
+        "definition": "A cryptographic protocol used heavily in 'East-West' traffic where both the client and server present x.509 certificates to authenticate each other, ensuring strict identity verification between internal microservices.",
+        "source": "api-security-20260121-1953.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Competing Consumers Pattern",
+        "definition": "A scalability architecture where multiple worker instances monitor a single queue to process messages in parallel, allowing the system to handle high-volume workloads by decoupling the producer's ingestion rate from the consumers' processing speed.",
+        "source": "asynchronous-queues-vs-pubsub-20260120-1240.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Cellular Architecture",
+        "definition": "A fault-isolation design pattern that partitions a service into independent, self-contained units (cells) to minimize blast radius, ensuring that a failure in one shard affects only a subset of users rather than the entire fleet.",
+        "source": "availability-tiers---reality-check-20260122-1032.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Circuit Breaker",
+        "definition": "A resilience pattern that detects persistent failures in a downstream service and temporarily stops sending requests to it, preventing resource exhaustion and cascading failures across the platform.",
+        "source": "backpressure-20260120-1301.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Metastable Failure",
+        "definition": "A failure mode where a small initial error triggers a positive feedback loop (such as a retry storm), causing the blast radius to expand automatically from a small partition to a total system collapse.",
+        "source": "blast-radius-analysis-20260122-1039.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Dual Write, Single Read",
+        "definition": "A data migration pattern where the application writes to both legacy and new datastores simultaneously to ensure consistency, while maintaining the legacy store as the authoritative source for reads until cutover.",
+        "source": "branch-by-abstraction-20260120-0919.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Scientist Pattern",
+        "definition": "A refactoring pattern popularized by GitHub that instrumentally compares the results of old and new code paths in production to detect mismatches before the new code is fully enabled for users.",
+        "source": "branch-by-abstraction-20260120-0919.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Blast Radius Reduction",
+        "definition": "A strategic architectural goal to limit the impact of a system failure to a specific component or user subset, ensuring a crash in a non-critical feature does not cascade into a total platform outage.",
+        "source": "bulkhead-pattern-20260120-1301.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Poison Pill",
+        "definition": "A specific malicious or malformed request that triggers a bug causing a system crash; in a monolithic system, this can propagate globally, but bulkheads contain it to a single thread pool or cell.",
+        "source": "bulkhead-pattern-20260120-1301.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Criticality-Based Bulkheading",
+        "definition": "A resource isolation strategy based on business value, strictly separating high-priority traffic (e.g., Checkout) from low-priority traffic (e.g., Recommendations) to prevent lower-value features from starving critical paths.",
+        "source": "bulkhead-pattern-20260120-1301.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Bulkheading",
+        "definition": "A distributed system pattern that isolates resources (such as thread pools) into partitions, ensuring that a failure or latency spike in one component (e.g., storage layer) is contained and does not cascade to exhaust resources in unrelated areas.",
+        "source": "chaos-engineering-resilience-20260123-1055.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Data Sovereignty",
+        "definition": "The legal requirement that data is subject to the laws of the country where it is physically stored or processed, necessitating architectural patterns like regional isolation and geofencing to comply with local regulations such as GDPR or PIPL.",
+        "source": "compliance-data-sovereignty-20260122-0729.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Envelope Encryption",
+        "definition": "A key management architecture where data is encrypted with a Data Encryption Key (DEK) which is then encrypted by a Master Key, enabling efficient key rotation and secure hierarchy management without the computational cost of re-encrypting the underlying data.",
+        "source": "compliance-data-sovereignty-20260122-0729.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Anycast VIP",
+        "definition": "A network addressing strategy where a single IP address is advertised via BGP from multiple geographic locations, routing users to the topologically nearest PoP and enabling automatic global failover without DNS changes.",
+        "source": "content-delivery-networks-cdn-20260116-1237.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Kappa Architecture",
+        "definition": "A stream-processing design pattern that treats all data (real-time and historical) as a single stream, eliminating the separate batch layer found in Lambda Architecture to reduce code duplication and operational complexity.",
+        "source": "data-architecture-patterns-20260121-1949.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Exponential Backoff with Jitter",
+        "definition": "A resilience pattern used in client SDKs where retry attempts are delayed by increasingly longer intervals (backoff) combined with a random time variance (jitter). This strategy is critical for preventing 'Thundering Herd' scenarios by desynchronizing retry traffic from millions of clients during a service outage recovery.",
+        "source": "data-transfer-optimization-20260122-0951.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Thundering Herd Problem",
+        "definition": "A cascading failure mode where a massive number of clients simultaneously retry failed requests or reconnect after an outage, overwhelming the server's resources and preventing recovery. Mitigation requires architectural patterns like circuit breakers, aggressive caching, and randomized retry logic.",
+        "source": "data-transfer-optimization-20260122-0951.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Vertical Ceiling",
+        "definition": "The distinct point where a monolithic database hits physical hardware limits (connections or IOPS) regardless of cost, marking the end of architectural runway and necessitating an immediate migration to horizontal scaling.",
+        "source": "database-sharding-strategies-20260119-0837.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "W3C Trace Context",
+        "definition": "The industry-standard header format (`traceparent`) that ensures trace continuity across heterogeneous vendors and legacy systems, acting as a critical enabler for unified observability migrations in complex architectures.",
+        "source": "distributed-tracing-architecture-20260121-1951.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Taxonomy Architecture",
+        "definition": "A governance strategy that separates immutable technical tags (e.g., Service ID) from mutable business logic (e.g., Cost Center) via a CMDB lookup, ensuring that cost reporting remains accurate even during organizational restructuring.",
+        "source": "finops-cost-engineering-20260123-1034.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Pub/Sub Deletion Pattern",
+        "definition": "An asynchronous architectural pattern for handling 'Right to Be Forgotten' requests where an identity service broadcasts deletion events to downstream microservices, relying on eventual consistency to manage cleanup across hundreds of services.",
+        "source": "gdpr---what-you-must-know-20260122-1035.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Route Flapping",
+        "definition": "A specific risk in Anycast architectures where unstable internet routing causes a user's packet path to switch between different data centers mid-session, resulting in connection resets for stateful protocols (TCP) despite being harmless for stateless ones (UDP).",
+        "source": "geo-routing-20260120-1301.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Stateless Architecture",
+        "definition": "A design pattern that decouples application logic (Compute) from data (State), treating servers as ephemeral resources (\"cattle\") to enable rapid auto-scaling, rolling updates, and the use of cost-effective Spot Instances.",
+        "source": "horizontal-scaling-patterns-20260122-1042.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Lease Mechanism",
+        "definition": "An optimistic locking pattern where a node acquires a time-bound privilege (TTL) that must be periodically renewed, offering a lightweight alternative to heavy consensus protocols like Paxos for leader election.",
+        "source": "leader-election-20260120-1255.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Direct Server Return (DSR)",
+        "definition": "An L4 architectural pattern where backend servers send responses directly to the client, bypassing the load balancer to prevent bandwidth bottlenecks and significantly reduce infrastructure COGS.",
+        "source": "load-balancing-deep-dive-20260116-1239.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "The 50% Trap",
+        "definition": "A critical capacity planning failure in dual-region Active-Active architectures where regions running above 50% utilization cannot absorb the full traffic load during a failover, resulting in immediate cascading failure of the surviving region.",
+        "source": "multi-region-architecture-20260123-1057.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Pilot Light",
+        "definition": "A disaster recovery pattern where the data layer is actively replicated but the compute layer is turned off to minimize cost, accepting a higher Recovery Time Objective (RTO) due to the latency of booting and warming servers during failover.",
+        "source": "multi-region-patterns-20260120-1302.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Cardholder Data Environment (CDE)",
+        "definition": "The distinct network segment and infrastructure where cardholder data is stored, processed, or transmitted; isolating the CDE via VPCs and strict ACLs is the primary mechanism for minimizing audit scope and security blast radius.",
+        "source": "pci-dss-for-payment-systems-20260122-1036.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Multiplexing",
+        "definition": "The HTTP/2 capability to transmit multiple parallel request/response streams over a single TCP connection, eliminating the 'waterfall' loading model. This concept is vital for optimizing load balancer resources and reducing the overhead of TLS handshakes in microservices.",
+        "source": "protocol-fundamentals-20260116-1239.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Jitter",
+        "definition": "A resilience pattern that adds randomized variance to polling intervals or retry logic (e.g., waiting 10s \u00b1 2s), preventing synchronized traffic spikes that lead to self-inflicted DDoS attacks.",
+        "source": "real-time-polling-vs-websockets-20260120-1240.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Async Request-Reply",
+        "definition": "A distributed design pattern for long-running operations where the server immediately accepts a request (HTTP 202) and provides a status endpoint for the client to poll, decoupling heavy processing from connection duration.",
+        "source": "real-time-polling-vs-websockets-20260120-1240.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Trough Filling",
+        "definition": "An orchestration pattern where low-priority, interruptible batch workloads are dynamically scheduled to consume the idle compute capacity gap that exists between the reserved infrastructure baseline and variable diurnal traffic patterns.",
+        "source": "reserved-vs-spot-strategy-20260122-0949.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Traffic Shadowing",
+        "definition": "A risk-mitigation strategy where the Facade duplicates incoming requests to a new microservice asynchronously (fire-and-forget) to validate performance and data accuracy against the legacy system without impacting the end user.",
+        "source": "strangler-fig-pattern-20260120-0919.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Seams",
+        "definition": "The natural dividing lines within a monolith where code boundaries are relatively clear and coupling is minimal, used by TPMs to identify high-value, low-risk domains (Bounded Contexts) to target for extraction first.",
+        "source": "strangler-fig-pattern-20260120-0919.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Distributed Monolith",
+        "definition": "An architectural anti-pattern where services are deployed independently but remain tightly coupled through a shared legacy database or synchronous dependencies, resulting in increased operational complexity without the benefits of true decoupling.",
+        "source": "strangler-fig-pattern-20260120-0919.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Enabling Team",
+        "definition": "A team of functional experts (e.g., Security, Architecture) that engages temporarily with stream-aligned teams to bridge capability gaps and facilitate upskilling, acting as force multipliers rather than permanent operational dependencies.",
+        "source": "team-topologies-conways-law-20260123-1042.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "State Machine Replication (SMR)",
+        "definition": "A fundamental architectural pattern where multiple servers execute the exact same sequence of commands from a Replicated Log to reach the same deterministic state, forming the basis of systems like Spanner and Etcd.",
+        "source": "the-consensus-problem-20260120-1255.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Fencing",
+        "definition": "A safety mechanism that uses monotonically increasing Epochs or Terms to reject requests from a 'Zombie Leader'\u2014a node that believes it is active but has actually been superseded during a failover.",
+        "source": "the-consensus-problem-20260120-1255.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Polyglot Persistence",
+        "definition": "An architectural pattern where distinct database technologies (SQL, NoSQL, Graph) are selected for specific microservices based on unique access patterns and data shapes rather than utilizing a monolithic storage solution.",
+        "source": "trade-offs-summary-20260121-1947.md",
+        "category": "Architectural Strategy"
+      },
+      {
+        "term": "Policy Decision Point (PDP)",
+        "definition": "The central logical engine in Zero Trust architecture that aggregates real-time signals\u2014identity, device health, and context\u2014to render an allow/deny verdict for every access request.",
+        "source": "zero-trust-architecture-20260121-1953.md",
+        "category": "Architectural Strategy"
+      }
+    ],
+    "ML/AI Systems": [
+      {
+        "term": "Watermelon OKR",
+        "definition": "A program failure mode where a project reports 'Green' status throughout the cycle based on sentiment, only to turn 'Red' immediately before launch due to a lack of objective, binary milestones.",
+        "source": "agile-at-scale-program-governance-20260123-1030.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "ReBAC (Relationship-Based Access Control)",
+        "definition": "A scalable authorization model (popularized by Google Zanzibar) that defines permissions based on a user's relationship to a resource within a graph (e.g., 'editor of parent folder'), offering greater flexibility than traditional RBAC.",
+        "source": "api-security-20260121-1953.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Shadow APIs",
+        "definition": "Undocumented, unmaintained, or 'zombie' API endpoints that bypass security governance and updates, representing a primary attack vector that Principal TPMs must mitigate via automated discovery and 'Shift Left' policies.",
+        "source": "api-security-20260121-1953.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "ABAC (Attribute-Based Access Control)",
+        "definition": "A fine-grained authorization model that evaluates specific attributes of the user, resource, and environment (e.g., time of day, VPC endpoint) to grant access, allowing for complex logic that static Role-Based Access Control cannot handle.",
+        "source": "authentication-vs-authorization-20260121-1953.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Static Stability",
+        "definition": "A system state where a service continues to operate normally during dependency failures or control plane outages without requiring active state changes, scaling events, or human intervention.",
+        "source": "availability-tiers---reality-check-20260122-1032.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "False Positive Rate (FPR)",
+        "definition": "The probabilistic margin of error where a filter incorrectly indicates an item exists; Principal TPMs must tune this metric to balance the cost of DRAM allocation against the latency penalty of unnecessary downstream storage lookups.",
+        "source": "bloom-filters-20260121-1947.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Fungible Capacity",
+        "definition": "Hardware resources designed to be interchangeable between different workload types (e.g., repurposing ML training clusters for inference during peak traffic), acting as a strategic buffer against supply chain lead times.",
+        "source": "capacity-planning-20260123-1051.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Inorganic Growth",
+        "definition": "Step-function demand increases driven by discrete business actions like product launches or marketing campaigns, which cannot be predicted via historical trends and require 'Proxy Modeling' to forecast.",
+        "source": "capacity-planning-20260123-1051.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Steady State",
+        "definition": "The quantifiable baseline of a healthy system defined by business-centric metrics (e.g., Orders per Minute) rather than infrastructure stats, serving as the control group to distinguish chaos-induced failure from background noise.",
+        "source": "chaos-engineering-20260120-1301.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "GameDay",
+        "definition": "A synchronized, high-fidelity rehearsal of failure scenarios used to verify not just technical resilience, but the human response systems, access permissions, and validity of runbooks under pressure.",
+        "source": "chaos-engineering-20260120-1301.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Half-Open State",
+        "definition": "A transitional circuit breaker state where a limited number of 'probe' requests are permitted to test downstream health; success resets the circuit to Closed, while failure returns it to Open.",
+        "source": "circuit-breaker-20260120-1301.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Fail-Fast",
+        "definition": "A design principle where the system immediately rejects requests to a failing dependency without waiting for timeouts, preserving compute resources and preventing the calling service from hanging.",
+        "source": "circuit-breaker-20260120-1301.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Bin-Packing",
+        "definition": "The operational practice of maximizing hardware utilization by efficiently scheduling containers or workloads onto the fewest number of host nodes possible, thereby reducing waste and the total count of required instances.",
+        "source": "cost-model-fundamentals-20260122-0939.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Mosaic Effect",
+        "definition": "A security phenomenon where distinct datasets classified as non-sensitive individually reveal Confidential or Restricted information when aggregated, requiring context-aware governance policies at the query layer rather than just the storage layer.",
+        "source": "data-classification-framework-20260122-1035.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Tail-Based Sampling",
+        "definition": "A high-fidelity strategy where 100% of traces are buffered in memory and analyzed upon completion, persisting only specific traces (like errors or latency spikes) to maximize business value while managing storage costs.",
+        "source": "distributed-tracing-architecture-20260121-1951.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "TTL Strategy",
+        "definition": "The architectural decision to balance Mean Time to Recover (MTTR) against OpEx; lower TTLs allow for rapid region evacuation during outages but significantly increase billable query volume and compute load.",
+        "source": "dns-architecture-20260116-1239.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Swiss Cheese Model",
+        "definition": "A risk model illustrating how accumulated low-impact technical debts (holes) across multiple defense layers can align to permit a catastrophic, high-probability failure.",
+        "source": "expected-loss-calculation-20260122-1038.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Two Generals' Problem",
+        "definition": "A classic distributed systems thought experiment illustrating that it is impossible to guarantee with certainty that an acknowledgement was received over an unreliable network, creating the state ambiguity that necessitates idempotency.",
+        "source": "idempotency---critical-concept-20260120-1240.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Zombie Resource",
+        "definition": "An orphaned infrastructure asset (like a VM or container) created by a duplicate, non-idempotent provisioning request that the client is unaware of, resulting in wasted compute capacity and inflated COGS.",
+        "source": "idempotency---critical-concept-20260120-1240.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Continuous Batching",
+        "definition": "An iteration-level scheduling technique that processes new requests immediately as individual sequences finish, rather than waiting for a full static batch to complete, significantly improving GPU utilization and throughput.",
+        "source": "llm-serving-considerations-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Tensor Parallelism",
+        "definition": "A distributed inference technique that splits individual model layers across multiple GPUs to minimize latency, necessitating high-bandwidth interconnects (like NVLink) due to frequent synchronization.",
+        "source": "llm-serving-considerations-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Quantization",
+        "definition": "The process of reducing model precision (e.g., from FP16 to INT8) to lower VRAM consumption and alleviate memory bandwidth constraints, serving as a primary lever for improving unit economics.",
+        "source": "llm-serving-considerations-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Feature Store",
+        "definition": "A dual-database abstraction layer that manages feature consistency by synchronizing high-throughput offline storage for training with low-latency online storage for real-time inference.",
+        "source": "mlops-pipeline-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Point-in-Time Correctness",
+        "definition": "A data engineering capability (often called 'Time Travel') that reconstructs historical feature states exactly as they existed at a specific moment to prevent data leakage during model training.",
+        "source": "mlops-pipeline-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Training-Serving Skew",
+        "definition": "A critical failure mode where model performance degrades because the data distribution or transformation logic used in the production inference environment differs from the batch training environment.",
+        "source": "mlops-pipeline-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Continuous Training (CT)",
+        "definition": "An automated pipeline strategy that triggers model retraining based on detected data drift or performance degradation, distinguishing mature MLOps from static software deployment.",
+        "source": "mlops-pipeline-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Stateful Architecture",
+        "definition": "A system model where servers must maintain persistent context (memory/file descriptors) for specific clients, requiring 'sticky sessions' at the load balancer level and complicating auto-scaling strategies.",
+        "source": "real-time-polling-vs-websockets-20260120-1240.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Fencing Tokens",
+        "definition": "A safety mechanism using monotonically increasing IDs to prevent 'Split Brain' scenarios, ensuring storage layers automatically reject writes from a deposed Leader that still believes it is active.",
+        "source": "replication-patterns-20260119-0837.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Glue Code",
+        "definition": "The extensive supporting infrastructure code (data ingestion, cleaning, feature extraction) surrounding AI/ML models; identified in Mag7 environments as the primary source of hidden technical debt compared to the relatively small codebase of the model itself.",
+        "source": "technical-debt-quantification-20260122-1039.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "3D Parallelism",
+        "definition": "A distributed training architecture that combines Data, Tensor, and Pipeline parallelism to split massive foundation models across thousands of GPUs, optimizing memory usage and inter-node communication to maximize Model FLOPs Utilization (MFU).",
+        "source": "training-vs-inference-20260121-1950.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Chinchilla Scaling Laws",
+        "definition": "A resource allocation framework dictating the compute-optimal ratio between model parameter count and training data volume (approx. 20 tokens per parameter), used to balance training CapEx against long-term inference OpEx efficiency.",
+        "source": "training-vs-inference-20260121-1950.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Model FLOPs Utilization (MFU)",
+        "definition": "The primary efficiency metric for training clusters, measuring the ratio of actual floating-point operations performed vs. the hardware's theoretical peak; low MFU signals architectural bottlenecks in network bandwidth or parallelism strategy.",
+        "source": "training-vs-inference-20260121-1950.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Time to First Token (TTFT)",
+        "definition": "A critical inference latency metric measuring the elapsed time from request submission to the generation of the first output token, serving as the primary indicator of perceived user responsiveness in streaming GenAI applications.",
+        "source": "training-vs-inference-20260121-1950.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Parametric vs. Non-Parametric Knowledge",
+        "definition": "The architectural distinction between static knowledge baked into model weights (parametric) and dynamic, external data retrieved at runtime (non-parametric), which dictates the strategic choice between fine-tuning and RAG.",
+        "source": "vector-databases-and-rag-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Hybrid Search",
+        "definition": "A retrieval strategy that combines semantic vector search (ANN) with traditional keyword search (BM25) to ensure the system captures both conceptual queries and exact matches like SKUs or error codes.",
+        "source": "vector-databases-and-rag-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Lost in the Middle Phenomenon",
+        "definition": "A specific failure mode where LLMs ignore information located in the middle of a large context window, necessitating strict chunking strategies and limits on retrieval volume (top-k) to ensure response accuracy.",
+        "source": "vector-databases-and-rag-20260121-1949.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Packet-per-Second (PPS) Limit",
+        "definition": "A hypervisor or hardware constraint (e.g., AWS Nitro cards) where network performance is bottlenecked by the number of packets processed rather than total bandwidth, often causing dropped traffic during high-frequency bursts even if bandwidth usage is low.",
+        "source": "vertical-scaling-limits-20260122-1041.md",
+        "category": "ML/AI Systems"
+      },
+      {
+        "term": "Amdahl's Law",
+        "definition": "A theoretical principle dictating that the maximum speedup of a system is strictly limited by its serial (non-parallelizable) components, creating a 'soft ceiling' where adding more CPU power yields zero performance gain due to lock contention.",
+        "source": "vertical-scaling-limits-20260122-1041.md",
+        "category": "ML/AI Systems"
+      }
+    ],
+    "Cloud Economics & FinOps": [
+      {
+        "term": "W-Model",
+        "definition": "A strategic planning framework used at companies like Google and Meta that bridges top-down executive strategy with bottom-up engineering proposals to align resources, identify hidden costs, and finalize commitments.",
+        "source": "agile-at-scale-program-governance-20260123-1030.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Zombie APIs",
+        "definition": "Active endpoints that receive traffic but generate no business value, serving as a critical target for Principal TPMs to identify and deprecate to reduce infrastructure costs and security attack surfaces.",
+        "source": "api-lifecycle-management-20260123-1102.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "SOP 98-1 (Software Capitalization)",
+        "definition": "A US GAAP accounting standard that allows engineering labor during the 'Application Development Stage' to be capitalized as an asset rather than expensed, significantly boosting short-term EBITDA by moving costs from the P&L to the balance sheet.",
+        "source": "capex-vs-opex-mental-model-20260122-0953.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Cost to Serve (CTS)",
+        "definition": "A FinOps unit economic metric defined as Total Infrastructure Cost divided by Transactions; in a scalable architecture, this metric must remain flat or decrease as volume increases to demonstrate economies of scale.",
+        "source": "capex-vs-opex-mental-model-20260122-0953.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "FinOps",
+        "definition": "A cultural and operational framework consisting of three pillars (Inform, Optimize, Operate) that drives financial accountability and collaboration between engineering, finance, and business teams to manage variable cloud costs.",
+        "source": "cloud-economics-finops-20260122-0729.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Savings Plans",
+        "definition": "A flexible pricing model where organizations commit to a consistent dollar-per-hour spend amount for a 1-3 year term, offering significant discounts while allowing for changes in instance family, size, and region compared to rigid Reserved Instances.",
+        "source": "cloud-economics-finops-20260122-0729.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Spot/Preemptible Instances",
+        "definition": "Excess cloud compute capacity offered at 60-90% discounts that can be reclaimed by the provider with minimal notice (e.g., 2 minutes), requiring fault-tolerant, stateless architectures for effective utilization.",
+        "source": "cloud-economics-finops-20260122-0729.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Network Egress",
+        "definition": "The billable transfer of data out of a cloud provider or across Availability Zones; a major 'hidden cost' in system design that necessitates architectural optimizations like data locality, VPC endpoints, and CDN usage.",
+        "source": "cloud-economics-finops-20260122-0729.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Committed Use Discounts (CUDs)",
+        "definition": "A strategic financial lever where a TPM forecasts capacity needs 1-3 years out to lock in a spend floor with cloud providers, trading architectural flexibility for significant price reductions (30-50%) compared to on-demand rates.",
+        "source": "cost-model-fundamentals-20260122-0939.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Proportional Attribution",
+        "definition": "A technical methodology for allocating costs in multi-tenant environments (like Kubernetes) by measuring specific container-level resource requests against underlying node costs, effectively solving the 'peanut butter' distribution problem.",
+        "source": "finops-cost-engineering-20260123-1034.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Chargeback Model",
+        "definition": "A financial governance mechanism where cloud costs are directly deducted from a specific team's P&L rather than just reported, creating fiscal friction that incentivizes engineering efficiency and architectural discipline.",
+        "source": "finops-cost-engineering-20260123-1034.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Amortized Cost",
+        "definition": "A cost calculation method that spreads one-time financial commitments (such as Reserved Instances or Savings Plans) across the usage term to provide engineers with an accurate daily view of effective unit rates, preventing distortions caused by cash-basis accounting.",
+        "source": "finops-cost-engineering-20260123-1034.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Margin Engineering",
+        "definition": "A strategic discipline that treats cloud capacity management as a mechanism to systematically reduce Cost of Goods Sold (COGS) and improve Gross Margins, directly correlating technical infrastructure decisions to company valuation.",
+        "source": "reserved-vs-spot-strategy-20260122-0949.md",
+        "category": "Cloud Economics & FinOps"
+      },
+      {
+        "term": "Shadow Pricing",
+        "definition": "An internal economic model that bills engineering teams based on the underlying cost of their architectural choices (e.g., premium rates for stateful/monolithic services vs. spot rates for stateless apps) to drive decentralized behavioral change.",
+        "source": "reserved-vs-spot-strategy-20260122-0949.md",
+        "category": "Cloud Economics & FinOps"
+      }
+    ],
+    "Program Execution & Risk": [
+      {
+        "term": "Paved Roads",
+        "definition": "A platform governance strategy where standardized, pre-approved API infrastructure offers 'free' SRE support and tooling to incentivize adoption, contrasting with the high-risk 'off-road' custom implementations.",
+        "source": "api-lifecycle-management-20260123-1102.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Progressive Rollout",
+        "definition": "A release management strategy that strictly sequences deployments across expanding scopes of impact (One-Box \u2192 Zone \u2192 Region \u2192 Global) to validate health via canary analysis before exposing the global user base to risk.",
+        "source": "blast-radius-analysis-20260122-1039.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Branch by Abstraction",
+        "definition": "A large-scale refactoring strategy that uses an abstraction layer to allow legacy and new implementations to coexist on the main branch, decoupling deployment from release to avoid long-lived feature branches.",
+        "source": "branch-by-abstraction-20260120-0919.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Trunk-Based Development",
+        "definition": "A version control workflow where all developers commit to the main branch daily, relying on feature flags and abstraction layers rather than merge-heavy long-lived branches to maintain high engineering velocity.",
+        "source": "branch-by-abstraction-20260120-0919.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Stranded Asset",
+        "definition": "A CAPEX risk scenario where specialized infrastructure (such as custom cooling for specific AI chips) becomes obsolete or unusable due to a strategic pivot before its financial value has been fully depreciated.",
+        "source": "capex-vs-opex-mental-model-20260122-0953.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Immutable Artifact",
+        "definition": "A build output (such as a Docker image or JAR) generated once at the start of the pipeline and deployed identically across all environments without rebuilding, ensuring that what is tested in staging is bit-for-bit identical to production.",
+        "source": "cicd-release-engineering-20260123-1045.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Shadow Dependencies",
+        "definition": "Undocumented or legacy downstream service interactions revealed through tracing visualization, representing hidden architectural risks that complicate capacity planning and prevent effective service deprecation.",
+        "source": "distributed-tracing-architecture-20260121-1951.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Expected Loss (EL)",
+        "definition": "A quantitative decision framework ($EL = P \\times (I \\times B) \\times D$) that calculates the financial risk of failure to objectively prioritize technical debt reduction against feature velocity.",
+        "source": "expected-loss-calculation-20260122-1038.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Waterline Strategy",
+        "definition": "A risk management approach that targets a specific coverage ratio (typically 70-80%) for committed spend (RIs/Savings Plans), intentionally leaving a portion of capacity as On-Demand to avoid financial lock-in during traffic drops or architectural pivots.",
+        "source": "reserved-vs-spot-strategy-20260122-0949.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Value at Risk (VaR)",
+        "definition": "A statistical technique adapted from finance that calculates the maximum potential loss over a specific timeframe with a given confidence level (e.g., 95%), allowing leadership to plan for tail risks and worst-case scenarios.",
+        "source": "risk-quantification-20260122-0729.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Failure Mode and Effects Analysis (FMEA)",
+        "definition": "A systematic methodology that prioritizes risks by calculating a Risk Priority Number (RPN) derived from the severity, probability, and detectability of potential failure modes.",
+        "source": "risk-quantification-20260122-0729.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Cost of Delay (CoD)",
+        "definition": "A prioritization metric that quantifies the ongoing economic loss (revenue at risk, increased costs, or strategic impact) incurred for every week a feature or fix is postponed, often used to order backlogs via Weighted Shortest Job First (WSJF).",
+        "source": "risk-quantification-20260122-0729.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Layer 7 Load Balancing",
+        "definition": "Application-layer traffic distribution that routes requests based on content (URLs, headers, cookies), enabling advanced traffic management strategies like canary deployments and sticky sessions, unlike lower-level packet routing.",
+        "source": "scaling-architecture-20260122-0729.md",
+        "category": "Program Execution & Risk"
+      },
+      {
+        "term": "Programmable Facade",
+        "definition": "A dynamic Layer 7 proxy (e.g., Envoy, Zuul) that manages the migration lifecycle by handling traffic routing, protocol translation (e.g., legacy proprietary to gRPC), and instant rollback capabilities via feature flags.",
+        "source": "strangler-fig-pattern-20260120-0919.md",
+        "category": "Program Execution & Risk"
+      }
+    ],
+    "Uncategorized": [
+      {
+        "term": "Load Shedding",
+        "definition": "A defensive strategy where a system intentionally rejects or drops a portion of incoming traffic when capacity is reached to preserve overall system stability and prevent a hard crash.",
+        "source": "backpressure-20260120-1301.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "Global Traffic Management (GTM)",
+        "definition": "Dynamic DNS logic that functions as a traffic control plane, routing requests based on real-time endpoint health, geographic proximity, and load capacity rather than returning static IP addresses.",
+        "source": "dns-architecture-20260116-1239.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "Post-Quantum Cryptography (PQC)",
+        "definition": "Next-generation cryptographic algorithms designed to resist quantum computing attacks, which Principal TPMs must incorporate into long-term infrastructure roadmaps to mitigate 'harvest now, decrypt later' threats.",
+        "source": "encryption-strategy-20260121-1953.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "Switchback Testing",
+        "definition": "An experimentation methodology used primarily in two-sided marketplaces to solve SUTVA violations by toggling treatments over time windows rather than user buckets, preventing network effects where a treatment group's behavior (e.g., driver supply) negatively impacts the control group.",
+        "source": "experimentation-platforms-20260123-1059.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "Counterfactual Logging",
+        "definition": "A logging strategy that records a 'virtual exposure' for Control group users only when they reach the specific execution path where the Treatment would have triggered, drastically improving statistical power by excluding noise from users who never interacted with the feature area.",
+        "source": "experimentation-platforms-20260123-1059.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "EDNS0 Client Subnet (ECS)",
+        "definition": "A DNS extension that resolves the 'hidden technical hurdle' of standard DNS routing by passing a portion of the end-user's IP to the authoritative nameserver, ensuring users are routed based on their actual location rather than the location of their corporate or ISP resolver.",
+        "source": "geo-routing-20260120-1301.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "Harmonic Mean",
+        "definition": "The mathematical aggregation method used within HLL to calculate final estimates across buckets, specifically chosen to suppress the skewing impact of outliers (rare 'lucky' hashes) on the total count.",
+        "source": "hyperloglog-hll-20260121-1947.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "At-Least-Once Delivery",
+        "definition": "The standard guarantee provided by most message brokers (like Kafka or SQS) where messages are ensured to arrive but may be duplicated, requiring the consumer to implement idempotency to achieve 'Exactly-Once' processing.",
+        "source": "idempotency---critical-concept-20260120-1240.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "Head-of-Line Blocking",
+        "definition": "A performance bottleneck where a delayed or lost packet prevents subsequent packets from being processed, often cited as a trade-off when optimizing packet sizes or choosing between TCP and UDP protocols.",
+        "source": "latency-physics-20260120-1301.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "Payment Orchestration Layer (POL)",
+        "definition": "A Mag7-scale architectural abstraction that sits between internal services and external Payment Service Providers (PSPs), enabling the business to commoditize underlying providers, avoid vendor lock-in, and manage unified ledgers.",
+        "source": "pci-dss-for-payment-systems-20260122-1036.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "Full Jitter",
+        "definition": "A backoff strategy that randomizes the sleep interval between retries (0 to cap) to desynchronize client traffic, preventing 'micro-bursts' of synchronized retries that can overwhelm recovering servers.",
+        "source": "retry-strategies-20260120-1301.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "IaC Drift",
+        "definition": "The divergence between defined Infrastructure as Code templates (e.g., Terraform) and the actual production environment caused by manual 'ClickOps' changes, which creates irreproducible 'Snowflake Servers' and hinders disaster recovery.",
+        "source": "technical-debt-quantification-20260122-1039.md",
+        "category": "Uncategorized"
+      },
+      {
+        "term": "Identity-Aware Proxy (IAP)",
+        "definition": "An infrastructure component acting as the Policy Enforcement Point (PEP) that intercepts requests to internal applications, verifying identity and context before tunneling traffic, effectively replacing the need for VPNs.",
+        "source": "zero-trust-architecture-20260121-1953.md",
+        "category": "Uncategorized"
+      }
+    ],
+    "API Design": [
+      {
+        "term": "Contract-First Development",
+        "definition": "A dependency management approach where teams negotiate API schemas (IDLs like Protobuf) and SLAs before implementation, enabling parallel development via stubbing and reducing integration 'convoy effects'.",
+        "source": "agile-at-scale-program-governance-20260123-1030.md",
+        "category": "API Design"
+      },
+      {
+        "term": "Interface Definition Language (IDL)",
+        "definition": "A formal contract mechanism (e.g., Protobuf, Smithy, Thrift) that treats API schemas as products, enabling auto-generated SDKs and strict backward compatibility checks at the compiler level to decouple organizational complexity.",
+        "source": "api-lifecycle-management-20260123-1102.md",
+        "category": "API Design"
+      },
+      {
+        "term": "One-Sided Error",
+        "definition": "A deterministic characteristic of the Count-Min Sketch where frequency estimates may be higher than reality (overestimation due to collisions) but never lower; this property makes the structure safe for threshold-based filtering (e.g., DDoS blocking) but unfit for precise billing.",
+        "source": "count-min-sketch-20260121-1947.md",
+        "category": "API Design"
+      },
+      {
+        "term": "Conservative Update",
+        "definition": "An optimization heuristic applied during the write phase where only the counter with the minimum current value is incremented, significantly reducing the accumulation of error (overestimation) from hash collisions without increasing memory usage.",
+        "source": "count-min-sketch-20260121-1947.md",
+        "category": "API Design"
+      },
+      {
+        "term": "Auto-Instrumentation",
+        "definition": "A low-friction implementation strategy using runtime agents to capture telemetry without code changes, used strategically to rapidly scale observability coverage across Tier-2/3 services where deep business context is not required.",
+        "source": "distributed-tracing-architecture-20260121-1951.md",
+        "category": "API Design"
+      },
+      {
+        "term": "Idempotency Key",
+        "definition": "A unique, client-generated value (typically a UUID) sent with API requests that allows the server to identify retries and return the original successful response rather than executing the operation twice.",
+        "source": "idempotency---critical-concept-20260120-1240.md",
+        "category": "API Design"
+      },
+      {
+        "term": "gRPC",
+        "definition": "An internal standard for microservice communication that leverages HTTP/2's binary framing to reduce serialization costs compared to JSON/REST. It allows for high-throughput, low-latency service-to-service calls, crucial for the scale of Mag7 control planes.",
+        "source": "protocol-fundamentals-20260116-1239.md",
+        "category": "API Design"
+      },
+      {
+        "term": "Protocol Buffers (Protobuf)",
+        "definition": "The binary serialization mechanism and interface definition language for gRPC that enforces strict contracts and offers significantly higher throughput and lower CPU usage than text-based JSON.",
+        "source": "synchronous-rest-vs-grpc-vs-graphql-20260120-1240.md",
+        "category": "API Design"
+      },
+      {
+        "term": "API as a Product",
+        "definition": "A strategic governance mindset where internal APIs are managed with defined SLAs, strict versioning, and 'Time to First Call' metrics, treating internal developers as customers to decouple teams and accelerate integration velocity.",
+        "source": "synchronous-rest-vs-grpc-vs-graphql-20260120-1240.md",
+        "category": "API Design"
+      }
+    ],
+    "Security & Compliance": [
+      {
+        "term": "Zero Trust Architecture (ZTA)",
+        "definition": "A security paradigm that assumes the network is hostile and the perimeter is breached, requiring continuous identity verification and context assertion for every request rather than implicit trust based on network location.",
+        "source": "api-security-20260121-1953.md",
+        "category": "Security & Compliance"
+      },
+      {
+        "term": "Service Mesh",
+        "definition": "An infrastructure layer (often using sidecar proxies like Envoy) that manages service-to-service communication, handling mTLS, retries, and observability without requiring developers to embed security logic into application code.",
+        "source": "api-security-20260121-1953.md",
+        "category": "Security & Compliance"
+      },
+      {
+        "term": "Zero Trust Architecture",
+        "definition": "A security paradigm where the network perimeter is considered porous and no request is trusted based on origin; instead, every access attempt is verified against User Identity, Device State, and Context at the application layer.",
+        "source": "authentication-vs-authorization-20260121-1953.md",
+        "category": "Security & Compliance"
+      },
+      {
+        "term": "Adaptive Authentication",
+        "definition": "A dynamic security mechanism that adjusts login friction based on risk signals (e.g., device fingerprint, geo-velocity), balancing the trade-off between maximizing user conversion (low friction) and preventing Account Takeover (high security).",
+        "source": "authentication-vs-authorization-20260121-1953.md",
+        "category": "Security & Compliance"
+      },
+      {
+        "term": "Tokenization",
+        "definition": "An architectural strategy for PCI-DSS scope reduction that replaces sensitive data with non-sensitive placeholders (tokens), ensuring downstream systems never process raw data and significantly minimizing compliance audit overhead.",
+        "source": "compliance-data-sovereignty-20260122-0729.md",
+        "category": "Security & Compliance"
+      },
+      {
+        "term": "SOC 2 Type II",
+        "definition": "A rigorous audit report that attests to the operational effectiveness of a service organization's security and availability controls over a sustained period (typically 6-12 months), serving as a critical 'license to operate' for B2B enterprise sales.",
+        "source": "compliance-data-sovereignty-20260122-0729.md",
+        "category": "Security & Compliance"
+      },
+      {
+        "term": "HYOK (Hold Your Own Key)",
+        "definition": "A compliance strategy where the customer retains full custody of encryption keys outside the cloud, rendering data opaque to the provider and sacrificing platform features like search/AI for absolute data sovereignty.",
+        "source": "encryption-strategy-20260121-1953.md",
+        "category": "Security & Compliance"
+      },
+      {
+        "term": "Device Attestation",
+        "definition": "A cryptographic process where an endpoint asserts its security posture (e.g., OS patch level, encryption status, EDR health) to the PDP, ensuring access is granted only to trusted, managed devices.",
+        "source": "zero-trust-architecture-20260121-1953.md",
+        "category": "Security & Compliance"
+      },
+      {
+        "term": "Break Glass (Emergency Access)",
+        "definition": "A critical operational fail-safe involving isolated, highly monitored accounts that bypass standard SSO and ZTA authentication flows to enable system recovery during catastrophic Identity Provider (IdP) outages.",
+        "source": "zero-trust-architecture-20260121-1953.md",
+        "category": "Security & Compliance"
+      }
+    ],
+    "Technical Debt & Governance": [
+      {
+        "term": "Automated Governance",
+        "definition": "The practice of replacing manual status reporting with 'Single Pane of Glass' dashboards that pull real-time operational metrics (e.g., PR cycle time, stale tickets) directly from engineering tools to identify bottlenecks.",
+        "source": "agile-at-scale-program-governance-20260123-1030.md",
+        "category": "Technical Debt & Governance"
+      },
+      {
+        "term": "The Interlock",
+        "definition": "A governance process where Engineering, Product, and Finance reconcile conflicting demand signals (Organic trends vs. Inorganic plans) to establish a unified capacity plan that balances P50 OpEx budgets against P90 CapEx procurement.",
+        "source": "capacity-planning-20260123-1051.md",
+        "category": "Technical Debt & Governance"
+      },
+      {
+        "term": "Continuous Compliance Scanning",
+        "definition": "A governance strategy that utilizes probabilistic sampling and heuristic triggers to detect schema drift and accidental PII insertion in real-time, replacing unscalable point-in-time manual audits with automated monitoring.",
+        "source": "data-classification-framework-20260122-1035.md",
+        "category": "Technical Debt & Governance"
+      },
+      {
+        "term": "Architectural Compliance",
+        "definition": "A governance strategy that embeds compliance logic directly into infrastructure and CI/CD pipelines, ensuring that policy violations are technically impossible rather than relying on manual, procedural audits.",
+        "source": "data-governance-privacy-20260123-1047.md",
+        "category": "Technical Debt & Governance"
+      },
+      {
+        "term": "Policy-as-Code (PaC)",
+        "definition": "The decoupling of governance logic from application code using high-level languages like Rego to enforce authorization and compliance decisions via centralized engines (e.g., OPA) or admission controllers.",
+        "source": "data-governance-privacy-20260123-1047.md",
+        "category": "Technical Debt & Governance"
+      },
+      {
+        "term": "Privacy by Design (Shift Left)",
+        "definition": "Integrating privacy controls into the early SDLC\u2014such as mandatory schema annotations and CI/CD gates that block unclassified PII\u2014to prevent technical debt and ensure lineage mapping happens before production provisioning.",
+        "source": "gdpr---what-you-must-know-20260122-1035.md",
+        "category": "Technical Debt & Governance"
+      },
+      {
+        "term": "Retry Budgets",
+        "definition": "A governance mechanism, often implemented via token buckets, that caps the aggregate percentage of retry traffic (e.g., 20%) to prevent a service from becoming a bad actor and DDoS-ing its dependencies during partial outages.",
+        "source": "retry-strategies-20260120-1301.md",
+        "category": "Technical Debt & Governance"
+      },
+      {
+        "term": "Carve-Out Method",
+        "definition": "A strategic scoping approach where specific services (e.g., beta products) are explicitly excluded from an audit cycle to allow for rapid iteration without the immediate overhead of compliance controls.",
+        "source": "soc-2---trust-framework-20260122-1036.md",
+        "category": "Technical Debt & Governance"
+      }
+    ],
+    "Incident Management": [
+      {
+        "term": "Visibility Timeout",
+        "definition": "A mechanism that temporarily hides a message from other consumers while it is being processed; if the worker crashes or fails to delete the message before this timer expires, the message becomes visible again for retrying, ensuring resilience.",
+        "source": "asynchronous-queues-vs-pubsub-20260120-1240.md",
+        "category": "Incident Management"
+      },
+      {
+        "term": "Dead Letter Queue (DLQ)",
+        "definition": "A specialized holding queue for isolating 'poison pill' messages that have exceeded a maximum retry count, preventing infinite processing loops (retry storms) and allowing for root cause analysis without blocking the main pipeline.",
+        "source": "asynchronous-queues-vs-pubsub-20260120-1240.md",
+        "category": "Incident Management"
+      },
+      {
+        "term": "Incident Commander (IC)",
+        "definition": "The designated authority during a high-severity incident who holds absolute decision-making power to prioritize containment over root cause analysis while shielding the engineering team from executive pressure.",
+        "source": "incident-management-postmortems-20260123-1012.md",
+        "category": "Incident Management"
+      },
+      {
+        "term": "Correction of Error (COE)",
+        "definition": "A rigorous, document-driven postmortem methodology (notably used at Amazon) that demands 'vocally self-critical' analysis to identify systemic lack of guardrails rather than attributing faults to human error.",
+        "source": "incident-management-postmortems-20260123-1012.md",
+        "category": "Incident Management"
+      }
+    ],
+    "Organizational Design": [
+      {
+        "term": "Control Plane",
+        "definition": "A centralized orchestration platform that manages fault injection via agents or sidecars, providing the necessary governance, auditability, and safety mechanisms (like automated stop conditions) required to run chaos engineering at enterprise scale.",
+        "source": "chaos-engineering-resilience-20260123-1055.md",
+        "category": "Organizational Design"
+      },
+      {
+        "term": "Cascading Failure",
+        "definition": "A systemic failure mode where a malfunction in a downstream dependency causes resource exhaustion (threads/connections) in upstream services, triggering a domino effect that brings down the entire platform.",
+        "source": "circuit-breaker-20260120-1301.md",
+        "category": "Organizational Design"
+      },
+      {
+        "term": "Stream-Aligned Team",
+        "definition": "The primary organizational unit aligned to a specific flow of work (e.g., a product or user journey), empowered to deliver value end-to-end without handoffs, ideally comprising 80-90% of an organization's teams.",
+        "source": "team-topologies-conways-law-20260123-1042.md",
+        "category": "Organizational Design"
+      },
+      {
+        "term": "Thinnest Viable Platform (TVP)",
+        "definition": "A platform engineering strategy that mandates building only the minimal set of self-service APIs and tools necessary to accelerate application teams, avoiding over-engineered solutions that do not solve immediate user needs.",
+        "source": "team-topologies-conways-law-20260123-1042.md",
+        "category": "Organizational Design"
+      }
+    ],
+    "Performance & Scaling": [
+      {
+        "term": "Headroom",
+        "definition": "A calculated buffer of idle capacity (e.g., 15-20%) maintained to absorb immediate traffic micro-bursts and mitigate 'cold start' latency before reactive auto-scaling triggers can provision new nodes.",
+        "source": "auto-scaling-strategies-20260122-1044.md",
+        "category": "Performance & Scaling"
+      },
+      {
+        "term": "Graceful Degradation",
+        "definition": "A resilience strategy where a system intentionally sheds non-critical load (e.g., disabling heavy features) to preserve core functionality when auto-scaling limits are hit or physical cloud capacity is exhausted.",
+        "source": "auto-scaling-strategies-20260122-1044.md",
+        "category": "Performance & Scaling"
+      },
+      {
+        "term": "Predictive Scaling",
+        "definition": "An auto-scaling approach that leverages historical data and machine learning to pre-provision capacity before demand spikes occur, resolving the latency and 'overshoot' issues common in reactive, threshold-based scaling.",
+        "source": "scaling-architecture-20260122-0729.md",
+        "category": "Performance & Scaling"
+      }
+    ]
+  }
+}
