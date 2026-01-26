@@ -22,6 +22,7 @@ class LoadedContext:
     total_chars: int
     success: bool
     error: Optional[str] = None
+    rag_duration_ms: Optional[int] = None  # RAG retrieval timing (if used)
 
 
 class ContextLoader:

@@ -61,6 +61,28 @@ class Settings(BaseSettings):
         description="Path to Cyrus project root for Nebula integration",
     )
 
+    # Qdrant Configuration (reuse IngredientScanner cluster)
+    qdrant_url: str = Field(default="", alias="QDRANT_URL")
+    qdrant_api_key: str = Field(default="", alias="QDRANT_API_KEY")
+
+    # RAG Configuration
+    rag_enabled: bool = Field(
+        default=True,
+        alias="RAG_ENABLED",
+        description="Use RAG for semantic retrieval instead of full context",
+    )
+    rag_top_k: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        alias="RAG_TOP_K",
+        description="Number of documents to retrieve for RAG",
+    )
+    rag_collection: str = Field(
+        default="professor_gemini",
+        description="Qdrant collection name for RAG documents",
+    )
+
     # Pipeline Configuration
     default_strictness: CriticStrictness = Field(default=CriticStrictness.LOW)
     max_workers: int = Field(default=10, ge=1, le=20)
@@ -94,7 +116,7 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
-    @field_validator("gemini_api_key", "anthropic_api_key", mode="before")
+    @field_validator("gemini_api_key", "anthropic_api_key", "qdrant_api_key", mode="before")
     @classmethod
     def strip_whitespace(cls, v: str) -> str:
         """Strip whitespace from API keys."""
@@ -125,6 +147,22 @@ class Settings(BaseSettings):
         if self.use_claude:
             return self.is_gemini_configured() and self.is_claude_configured()
         return self.is_gemini_configured()
+
+    def is_qdrant_configured(self) -> bool:
+        """Check if Qdrant is configured for RAG.
+
+        Returns:
+            True if Qdrant URL and API key are set.
+        """
+        return bool(self.qdrant_url and self.qdrant_api_key)
+
+    def is_rag_available(self) -> bool:
+        """Check if RAG is enabled and Qdrant is configured.
+
+        Returns:
+            True if RAG can be used.
+        """
+        return self.rag_enabled and self.is_qdrant_configured()
 
     def get_gemini_responses_path(self) -> str:
         """Get the path to gemini-responses directory in Cyrus.
