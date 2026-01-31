@@ -81,12 +81,13 @@ class RAGRetriever:
 
             content = "\n\n".join(context_parts)
 
-            # Log retrieval stats with timing
-            scores = [f"{d.score:.3f}" for d in documents]
-            logger.info(
-                f"RAG retrieved {len(documents)} docs in {rag_duration_ms}ms "
-                f"(scores: {', '.join(scores)}, {len(content):,} chars)"
-            )
+            # Log retrieval stats with timing (lazy formatting)
+            if logger.isEnabledFor(logging.INFO):
+                scores = [f"{d.score:.3f}" for d in documents]
+                logger.info(
+                    "RAG retrieved %d docs in %dms (scores: %s, %d chars)",
+                    len(documents), rag_duration_ms, ", ".join(scores), len(content)
+                )
 
             return LoadedContext(
                 content=content,
@@ -97,7 +98,7 @@ class RAGRetriever:
             )
 
         except Exception as e:
-            logger.error(f"RAG retrieval failed: {e}")
+            logger.error("RAG retrieval failed: %s", e)
             return LoadedContext(
                 content="",
                 file_count=0,
@@ -133,5 +134,5 @@ class RAGRetriever:
                 for doc in documents
             ]
         except Exception as e:
-            logger.error(f"Search failed: {e}")
+            logger.error("Search failed: %s", e)
             return []

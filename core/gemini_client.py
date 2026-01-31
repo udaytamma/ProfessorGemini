@@ -21,7 +21,7 @@ from config.settings import get_settings
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(slots=True)
 class GeminiResponse:
     """Response from Gemini API call.
 
@@ -32,6 +32,8 @@ class GeminiResponse:
         token_count: Approximate token count (if available).
         success: Whether the call succeeded.
         error: Error message if call failed.
+
+    Note: Uses slots=True for ~20% memory reduction per instance.
     """
 
     content: str
@@ -259,7 +261,7 @@ Generate a comprehensive, high-quality response."""
             api_key=self._settings.gemini_api_key,
             http_options=http_options,
         )
-        logger.info(f"Gemini client configured with model: {self._settings.gemini_model}")
+        logger.info("Gemini client configured with model: %s", self._settings.gemini_model)
 
     def is_available(self) -> bool:
         """Check if Gemini client is properly configured.
@@ -367,7 +369,7 @@ Generate a comprehensive, high-quality response."""
                 topics = json.loads(content_clean)
                 if not isinstance(topics, list):
                     topics = [str(topics)]
-                logger.info(f"Split content into {len(topics)} topics")
+                logger.info("Split content into %d topics", len(topics))
             except json.JSONDecodeError:
                 # Fallback: extract topics from text
                 topics = self._extract_topics_fallback(response.content)
@@ -429,7 +431,7 @@ Generate a comprehensive, high-quality response."""
             "raw_response": response.content,
         }
 
-        logger.info(f"Critique result for '{topic[:30]}...': {'PASS' if passed else 'FAIL'}")
+        logger.info("Critique result for '%s...': %s", topic[:30], "PASS" if passed else "FAIL")
         return result, response
 
     def synthesize_guide(self, sections: list[dict]) -> GeminiResponse:
@@ -540,7 +542,7 @@ Generate a comprehensive, high-quality response."""
 
                 if response.text:
                     duration_ms = int((time.time() - start_time) * 1000)
-                    logger.info(f"Gemini {operation} completed in {duration_ms}ms")
+                    logger.info("Gemini %s completed in %dms", operation, duration_ms)
                     return GeminiResponse(
                         content=response.text,
                         model=self._settings.gemini_model,
@@ -548,7 +550,7 @@ Generate a comprehensive, high-quality response."""
                         success=True,
                     )
 
-                logger.warning(f"Empty response from Gemini for {operation} (attempt {attempt + 1}/2)")
+                logger.warning("Empty response from Gemini for %s (attempt %d/2)", operation, attempt + 1)
 
             duration_ms = int((time.time() - start_time) * 1000)
             return GeminiResponse(
@@ -562,7 +564,7 @@ Generate a comprehensive, high-quality response."""
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
             error_msg = str(e)
-            logger.error(f"Gemini {operation} failed: {error_msg}")
+            logger.error("Gemini %s failed: %s", operation, error_msg)
 
             return GeminiResponse(
                 content="",
@@ -613,7 +615,7 @@ Generate a comprehensive, high-quality response."""
 
                 if response.text:
                     duration_ms = int((time.time() - start_time) * 1000)
-                    logger.info(f"Gemini {operation} completed in {duration_ms}ms (async)")
+                    logger.info("Gemini %s completed in %dms (async)", operation, duration_ms)
                     return GeminiResponse(
                         content=response.text,
                         model=self._settings.gemini_model,
@@ -621,7 +623,7 @@ Generate a comprehensive, high-quality response."""
                         success=True,
                     )
 
-                logger.warning(f"Empty response from Gemini for {operation} (attempt {attempt + 1}/2)")
+                logger.warning("Empty response from Gemini for %s (attempt %d/2)", operation, attempt + 1)
 
             duration_ms = int((time.time() - start_time) * 1000)
             return GeminiResponse(
@@ -635,7 +637,7 @@ Generate a comprehensive, high-quality response."""
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
             error_msg = str(e)
-            logger.error(f"Gemini {operation} failed: {error_msg}")
+            logger.error("Gemini %s failed: %s", operation, error_msg)
 
             return GeminiResponse(
                 content="",
@@ -711,5 +713,5 @@ Generate a comprehensive, high-quality response."""
             "raw_response": response.content,
         }
 
-        logger.info(f"Critique result for '{topic[:30]}...': {'PASS' if passed else 'FAIL'}")
+        logger.info("Critique result for '%s...': %s", topic[:30], "PASS" if passed else "FAIL")
         return result, response

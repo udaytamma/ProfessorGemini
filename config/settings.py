@@ -116,7 +116,11 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
-    @field_validator("gemini_api_key", "anthropic_api_key", "qdrant_api_key", mode="before")
+    # Perplexity Configuration
+    perplexity_api_key: str = Field(default="", alias="PERPLEXITY_API_KEY")
+    perplexity_model: str = Field(default="sonar-pro")
+
+    @field_validator("gemini_api_key", "anthropic_api_key", "qdrant_api_key", "perplexity_api_key", mode="before")
     @classmethod
     def strip_whitespace(cls, v: str) -> str:
         """Strip whitespace from API keys."""
@@ -163,6 +167,14 @@ class Settings(BaseSettings):
             True if RAG can be used.
         """
         return self.rag_enabled and self.is_qdrant_configured()
+
+    def is_perplexity_configured(self) -> bool:
+        """Check if Perplexity API is configured.
+
+        Returns:
+            True if Perplexity API key is set.
+        """
+        return bool(self.perplexity_api_key)
 
     def get_gemini_responses_path(self) -> str:
         """Get the path to gemini-responses directory in Cyrus.

@@ -17,7 +17,7 @@ from core.gemini_client import GeminiClient, GeminiResponse
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(slots=True)
 class AttemptRecord:
     """Record of a single draft-critique attempt.
 
@@ -29,6 +29,8 @@ class AttemptRecord:
         critique_feedback: Feedback from the critique.
         draft_duration_ms: Time for draft generation.
         critique_duration_ms: Time for critique.
+
+    Note: Uses slots=True for ~20% memory reduction per instance.
     """
 
     attempt_number: int
@@ -40,7 +42,7 @@ class AttemptRecord:
     critique_duration_ms: int
 
 
-@dataclass
+@dataclass(slots=True)
 class BarRaiserResult:
     """Final result from the Bar Raiser loop.
 
@@ -52,6 +54,8 @@ class BarRaiserResult:
         total_duration_ms: Total time spent on this topic.
         success: Whether processing completed (even if low confidence).
         error: Error message if processing failed entirely.
+
+    Note: Uses slots=True for ~20% memory reduction per instance.
     """
 
     topic: str

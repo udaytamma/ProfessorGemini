@@ -155,3 +155,81 @@ class TestGetSettings:
         settings2 = get_settings()
         # Objects should be different instances after refresh
         assert settings1 is not settings2
+
+
+class TestPerplexitySettings:
+    """Tests for Perplexity-related settings."""
+
+    def test_perplexity_api_key_default(self):
+        """Test perplexity_api_key defaults to empty string."""
+        with patch.dict(os.environ, {"PERPLEXITY_API_KEY": ""}, clear=False):
+            refresh_settings()
+            settings = Settings()
+            assert settings.perplexity_api_key == ""
+
+    def test_perplexity_model_default(self):
+        """Test perplexity_model defaults to sonar-pro."""
+        settings = Settings()
+        assert settings.perplexity_model == "sonar-pro"
+
+    def test_is_perplexity_configured_false(self):
+        """Test is_perplexity_configured returns False when key not set."""
+        with patch.dict(os.environ, {"PERPLEXITY_API_KEY": ""}, clear=False):
+            refresh_settings()
+            settings = get_settings()
+            assert not settings.is_perplexity_configured()
+
+    def test_is_perplexity_configured_true(self):
+        """Test is_perplexity_configured returns True when key is set."""
+        with patch.dict(os.environ, {"PERPLEXITY_API_KEY": "test_key"}, clear=False):
+            refresh_settings()
+            settings = get_settings()
+            assert settings.is_perplexity_configured()
+
+    def test_perplexity_key_whitespace_stripped(self):
+        """Test whitespace is stripped from Perplexity API key."""
+        with patch.dict(os.environ, {"PERPLEXITY_API_KEY": "  key_with_spaces  "}, clear=False):
+            refresh_settings()
+            settings = get_settings()
+            assert settings.perplexity_api_key == "key_with_spaces"
+
+    def test_perplexity_key_from_env(self):
+        """Test Perplexity API key is loaded from environment."""
+        with patch.dict(os.environ, {"PERPLEXITY_API_KEY": "pplx-test-key-123"}, clear=False):
+            refresh_settings()
+            settings = get_settings()
+            assert settings.perplexity_api_key == "pplx-test-key-123"
+
+
+class TestAllApiConfigurations:
+    """Tests for combined API configuration methods."""
+
+    def test_all_apis_configured(self):
+        """Test when all APIs are configured."""
+        env_vars = {
+            "GEMINI_API_KEY": "test_gemini",
+            "ANTHROPIC_API_KEY": "test_anthropic",
+            "PERPLEXITY_API_KEY": "test_perplexity",
+        }
+        with patch.dict(os.environ, env_vars, clear=False):
+            refresh_settings()
+            settings = get_settings()
+
+            assert settings.is_gemini_configured()
+            assert settings.is_claude_configured()
+            assert settings.is_perplexity_configured()
+
+    def test_only_perplexity_configured(self):
+        """Test when only Perplexity is configured."""
+        env_vars = {
+            "GEMINI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "PERPLEXITY_API_KEY": "test_perplexity",
+        }
+        with patch.dict(os.environ, env_vars, clear=False):
+            refresh_settings()
+            settings = get_settings()
+
+            assert not settings.is_gemini_configured()
+            assert not settings.is_claude_configured()
+            assert settings.is_perplexity_configured()

@@ -13,9 +13,12 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(slots=True)
 class LoadedContext:
-    """Result from loading Knowledge Base context."""
+    """Result from loading Knowledge Base context.
+
+    Note: Uses slots=True for ~20% memory reduction per instance.
+    """
 
     content: str
     file_count: int

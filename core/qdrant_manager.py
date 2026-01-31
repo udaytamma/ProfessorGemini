@@ -11,7 +11,10 @@ Based on patterns from IngredientScanner/tools/ingredient_lookup.py
 
 import logging
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
+from threading import Lock
+from typing import Optional
 
 from google import genai
 from google.genai import types
@@ -29,11 +32,47 @@ from config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
+# LRU cache for search results
+_search_cache: OrderedDict[str, tuple[list, float]] = OrderedDict()
+_cache_lock = Lock()
+_CACHE_MAX_SIZE = 100
+_CACHE_TTL_SECONDS = 300  # 5 minutes
+
+
+def _cache_key(query: str, top_k: int, source_filter: Optional[str]) -> str:
+    """Generate cache key from search parameters."""
+    return f"{query}|{top_k}|{source_filter or ''}"
+
+
+def _get_cached_result(key: str) -> Optional[list]:
+    """Get cached result if valid, None otherwise."""
+    with _cache_lock:
+        if key in _search_cache:
+            results, timestamp = _search_cache[key]
+            if time.time() - timestamp < _CACHE_TTL_SECONDS:
+                # Move to end (most recently used)
+                _search_cache.move_to_end(key)
+                logger.debug("Cache hit for query: %s", key[:50])
+                return results
+            else:
+                # Expired, remove it
+                del _search_cache[key]
+    return None
+
+
+def _set_cached_result(key: str, results: list) -> None:
+    """Cache search results with timestamp."""
+    with _cache_lock:
+        _search_cache[key] = (results, time.time())
+        # Evict oldest if over size limit
+        while len(_search_cache) > _CACHE_MAX_SIZE:
+            _search_cache.popitem(last=False)
+
 VECTOR_SIZE = 768  # gemini-embedding-001 with output_dimensionality=768
 EMBEDDING_MODEL = "gemini-embedding-001"
 
 
-@dataclass
+@dataclass(slots=True)
 class QdrantDocument:
     """Document stored in Qdrant.
 
@@ -47,6 +86,8 @@ class QdrantDocument:
         char_count: Content length in characters.
         metadata: Source-specific metadata.
         score: Similarity score (populated on search).
+
+    Note: Uses slots=True for ~20% memory reduction per instance.
     """
 
     doc_id: str
@@ -123,7 +164,7 @@ class QdrantManager:
         exists = any(c.name == self.collection_name for c in collections.collections)
 
         if not exists:
-            logger.info(f"Creating collection: {self.collection_name}")
+            logger.info("Creating collection: %s", self.collection_name)
             client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(
@@ -209,7 +250,7 @@ class QdrantManager:
             collection_name=self.collection_name,
             points_selector=[point_id],
         )
-        logger.info(f"Deleted document: {doc_id}")
+        logger.info("Deleted document: %s", doc_id)
         return True
 
     def search(
@@ -217,6 +258,7 @@ class QdrantManager:
         query: str,
         top_k: int | None = None,
         source_filter: str | None = None,
+        use_cache: bool = True,
     ) -> list[QdrantDocument]:
         """Semantic search for documents.
 
@@ -224,15 +266,24 @@ class QdrantManager:
             query: Search query text.
             top_k: Number of results to return (defaults to settings.rag_top_k).
             source_filter: Optional filter by source (e.g., "kb").
+            use_cache: Whether to use LRU cache (default True).
 
         Returns:
             List of matching documents with scores.
         """
-        client = self._get_client()
-        self.ensure_collection_exists()
-
         if top_k is None:
             top_k = self._settings.rag_top_k
+
+        # Check cache first (if enabled)
+        cache_key = _cache_key(query, top_k, source_filter)
+        if use_cache:
+            cached = _get_cached_result(cache_key)
+            if cached is not None:
+                logger.info("RAG cache hit for query: %s...", query[:30])
+                return cached
+
+        client = self._get_client()
+        self.ensure_collection_exists()
 
         # Time embedding generation
         embed_start = time.time()
@@ -256,7 +307,7 @@ class QdrantManager:
         )
         query_ms = int((time.time() - query_start) * 1000)
 
-        logger.info(f"RAG timing: embedding={embed_ms}ms, qdrant_query={query_ms}ms")
+        logger.info("RAG timing: embedding=%dms, qdrant_query=%dms", embed_ms, query_ms)
 
         documents = []
         for point in results.points:
@@ -274,6 +325,10 @@ class QdrantManager:
                     score=point.score,
                 )
             )
+
+        # Cache the results
+        if use_cache:
+            _set_cached_result(cache_key, documents)
 
         return documents
 
@@ -351,7 +406,7 @@ class QdrantManager:
                     metadata=payload.get("metadata", {}),
                 )
         except Exception as e:
-            logger.warning(f"Error retrieving document {doc_id}: {e}")
+            logger.warning("Error retrieving document %s: %s", doc_id, e)
         return None
 
     def get_collection_stats(self) -> dict:
@@ -368,5 +423,5 @@ class QdrantManager:
                 "status": info.status.value if hasattr(info.status, "value") else str(info.status),
             }
         except Exception as e:
-            logger.warning(f"Error getting collection stats: {e}")
+            logger.warning("Error getting collection stats: %s", e)
             return {"points_count": 0, "status": "not_found"}

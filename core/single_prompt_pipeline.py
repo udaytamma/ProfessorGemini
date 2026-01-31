@@ -25,7 +25,7 @@ _rag_retriever = None
 _sync_performed = False
 
 
-@dataclass
+@dataclass(slots=True)
 class SinglePromptResult:
     """Result from Single Prompt execution.
 
@@ -39,6 +39,8 @@ class SinglePromptResult:
         success: Whether generation succeeded.
         error: Error message if failed.
         rag_used: Whether RAG retrieval was used (vs full context).
+
+    Note: Uses slots=True for ~20% memory reduction per instance.
     """
 
     session_id: str
@@ -72,12 +74,12 @@ def _get_rag_retriever():
             if result:
                 for source, stats in result.items():
                     logger.info(
-                        f"Synced {source}: {stats.indexed} indexed, "
-                        f"{stats.skipped} skipped, {stats.deleted} deleted"
+                        "Synced %s: %d indexed, %d skipped, %d deleted",
+                        source, stats.indexed, stats.skipped, stats.deleted
                     )
             _sync_performed = True
         except Exception as e:
-            logger.warning(f"Document sync failed: {e}")
+            logger.warning("Document sync failed: %s", e)
             _sync_performed = True  # Don't retry on failure
 
     # Create retriever if not exists
@@ -87,7 +89,7 @@ def _get_rag_retriever():
 
             _rag_retriever = RAGRetriever()
         except Exception as e:
-            logger.warning(f"Failed to initialize RAGRetriever: {e}")
+            logger.warning("Failed to initialize RAGRetriever: %s", e)
             return None
 
     return _rag_retriever
@@ -128,37 +130,37 @@ class SinglePromptPipeline:
         start_time = time.time()
         rag_used = False
 
-        logger.info(f"[{session_id}] Starting Single Prompt execution")
+        logger.info("[%s] Starting Single Prompt execution", session_id)
 
         # Step 1: Load context (RAG or full)
         rag_retriever = _get_rag_retriever()
 
         if rag_retriever is not None:
             # Try RAG retrieval
-            logger.info(f"[{session_id}] Using RAG retrieval (top-{self._settings.rag_top_k})...")
+            logger.info("[%s] Using RAG retrieval (top-%d)...", session_id, self._settings.rag_top_k)
             context_result = rag_retriever.get_context_for_prompt(prompt)
 
             if context_result.success:
                 rag_used = True
                 logger.info(
-                    f"[{session_id}] RAG retrieved {context_result.file_count} docs "
-                    f"({context_result.total_chars:,} chars)"
+                    "[%s] RAG retrieved %d docs (%d chars)",
+                    session_id, context_result.file_count, context_result.total_chars
                 )
             else:
                 # Fallback to full context
                 logger.warning(
-                    f"[{session_id}] RAG failed ({context_result.error}), "
-                    "falling back to full context"
+                    "[%s] RAG failed (%s), falling back to full context",
+                    session_id, context_result.error
                 )
                 context_result = self._context_loader.load_all_documents()
         else:
             # RAG not available, use full context
-            logger.info(f"[{session_id}] Loading full Knowledge Base context...")
+            logger.info("[%s] Loading full Knowledge Base context...", session_id)
             context_result = self._context_loader.load_all_documents()
 
         if not context_result.success:
             duration_ms = int((time.time() - start_time) * 1000)
-            logger.error(f"[{session_id}] Failed to load context: {context_result.error}")
+            logger.error("[%s] Failed to load context: %s", session_id, context_result.error)
             return SinglePromptResult(
                 session_id=session_id,
                 prompt=prompt,
@@ -172,12 +174,12 @@ class SinglePromptPipeline:
             )
 
         logger.info(
-            f"[{session_id}] Context ready: {context_result.file_count} documents "
-            f"({context_result.total_chars:,} chars) [RAG={rag_used}]"
+            "[%s] Context ready: %d documents (%d chars) [RAG=%s]",
+            session_id, context_result.file_count, context_result.total_chars, rag_used
         )
 
         # Step 2: Generate with Gemini
-        logger.info(f"[{session_id}] Calling Gemini with context...")
+        logger.info("[%s] Calling Gemini with context...", session_id)
         response = self._gemini.generate_with_context(
             prompt=prompt,
             context=context_result.content,
@@ -188,7 +190,7 @@ class SinglePromptPipeline:
         duration_ms = int((time.time() - start_time) * 1000)
 
         if not response.success:
-            logger.error(f"[{session_id}] Gemini call failed: {response.error}")
+            logger.error("[%s] Gemini call failed: %s", session_id, response.error)
             return SinglePromptResult(
                 session_id=session_id,
                 prompt=prompt,
@@ -207,9 +209,8 @@ class SinglePromptPipeline:
         other_ms = duration_ms - rag_ms - gemini_ms
 
         logger.info(
-            f"[{session_id}] Single Prompt completed in {duration_ms}ms "
-            f"[RAG={rag_ms}ms, Gemini={gemini_ms}ms, Other={other_ms}ms] "
-            f"[RAG_enabled={rag_used}]"
+            "[%s] Single Prompt completed in %dms [RAG=%dms, Gemini=%dms, Other=%dms] [RAG_enabled=%s]",
+            session_id, duration_ms, rag_ms, gemini_ms, other_ms, rag_used
         )
 
         return SinglePromptResult(
