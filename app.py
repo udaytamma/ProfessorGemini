@@ -17,6 +17,7 @@ import streamlit as st
 from config.settings import get_settings
 from core.pipeline import Pipeline
 from core.single_prompt_pipeline import SinglePromptPipeline
+from core.perplexity_client import PerplexityClient
 from utils.logging_utils import RequestLogger, configure_logging
 from utils.file_utils import FileManager
 
@@ -106,7 +107,7 @@ def inject_custom_css(theme: str = "dark") -> None:
 
         /* ===== BASE STYLES ===== */
         html, body {{
-            font-size: 14px !important;
+            font-size: 16px !important;
         }}
 
         .stApp {{
@@ -173,7 +174,7 @@ def inject_custom_css(theme: str = "dark") -> None:
 
         .page-title {{
             font-family: var(--font-display) !important;
-            font-size: 22px !important;
+            font-size: 24px !important;
             font-weight: 400 !important;
             color: var(--text-primary) !important;
             margin: 0 !important;
@@ -181,7 +182,7 @@ def inject_custom_css(theme: str = "dark") -> None:
         }}
 
         .page-subtitle {{
-            font-size: 13px;
+            font-size: 15px;
             color: var(--text-muted);
             margin-top: 2px;
         }}
@@ -194,7 +195,7 @@ def inject_custom_css(theme: str = "dark") -> None:
 
         /* ===== SECTION LABEL ===== */
         .section-label {{
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.8px;
@@ -238,7 +239,7 @@ def inject_custom_css(theme: str = "dark") -> None:
             gap: 6px;
             padding: 6px 12px;
             border-radius: 16px;
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 500;
         }}
 
@@ -263,12 +264,12 @@ def inject_custom_css(theme: str = "dark") -> None:
         .stButton > button {{
             font-family: var(--font-display) !important;
             font-weight: 500 !important;
-            font-size: 14px !important;
+            font-size: 16px !important;
             border-radius: 4px !important;
             padding: 8px 24px !important;
             transition: all 0.1s ease !important;
-            height: 36px !important;
-            min-height: 36px !important;
+            height: 40px !important;
+            min-height: 40px !important;
             min-width: 80px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
@@ -312,7 +313,7 @@ def inject_custom_css(theme: str = "dark") -> None:
 
         .stTextArea textarea {{
             font-family: var(--font-body) !important;
-            font-size: 14px !important;
+            font-size: 16px !important;
             background: var(--bg-input) !important;
             border: 1px solid var(--border) !important;
             border-radius: 4px !important;
@@ -320,7 +321,7 @@ def inject_custom_css(theme: str = "dark") -> None:
             padding: 12px 16px !important;
             min-height: 120px !important;
             resize: vertical !important;
-            line-height: 1.5 !important;
+            line-height: 1.6 !important;
         }}
 
         .stTextArea textarea:focus {{
@@ -336,12 +337,12 @@ def inject_custom_css(theme: str = "dark") -> None:
         /* ===== TEXT INPUT ===== */
         .stTextInput input {{
             font-family: var(--font-body) !important;
-            font-size: 14px !important;
+            font-size: 16px !important;
             background: var(--bg-input) !important;
             border: 1px solid var(--border) !important;
             border-radius: 4px !important;
             color: var(--text-primary) !important;
-            padding: 8px 12px !important;
+            padding: 10px 12px !important;
         }}
 
         .stTextInput input:focus {{
@@ -352,7 +353,7 @@ def inject_custom_css(theme: str = "dark") -> None:
 
         /* ===== OUTPUT SECTION ===== */
         .output-label {{
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.8px;
@@ -378,7 +379,7 @@ def inject_custom_css(theme: str = "dark") -> None:
             padding: 16px 20px !important;
             font-family: var(--font-display) !important;
             font-weight: 500 !important;
-            font-size: 14px !important;
+            font-size: 16px !important;
         }}
 
         [data-testid="stExpander"] > details > summary:hover {{
@@ -401,20 +402,20 @@ def inject_custom_css(theme: str = "dark") -> None:
         [data-testid="stExpander"] td,
         [data-testid="stExpander"] th {{
             color: var(--text-primary) !important;
-            font-size: 14px !important;
-            line-height: 1.6 !important;
+            font-size: 16px !important;
+            line-height: 1.7 !important;
         }}
 
         /* Headings inside expanders */
         [data-testid="stExpander"] h1 {{
-            font-size: 24px !important;
+            font-size: 26px !important;
             font-weight: 400 !important;
             margin-top: 24px !important;
             margin-bottom: 12px !important;
         }}
 
         [data-testid="stExpander"] h2 {{
-            font-size: 18px !important;
+            font-size: 20px !important;
             font-weight: 500 !important;
             margin-top: 24px !important;
             margin-bottom: 8px !important;
@@ -423,7 +424,7 @@ def inject_custom_css(theme: str = "dark") -> None:
         }}
 
         [data-testid="stExpander"] h3 {{
-            font-size: 16px !important;
+            font-size: 18px !important;
             font-weight: 500 !important;
             margin-top: 20px !important;
             margin-bottom: 8px !important;
@@ -445,7 +446,7 @@ def inject_custom_css(theme: str = "dark") -> None:
             padding: 2px 6px !important;
             border-radius: 4px !important;
             font-family: var(--font-mono) !important;
-            font-size: 13px !important;
+            font-size: 15px !important;
         }}
 
         [data-testid="stExpander"] pre {{
@@ -742,11 +743,14 @@ def init_session_state() -> None:
     defaults = {
         "pipeline_result": None,
         "single_prompt_result": None,
-        "generation_mode": "deep_dive",  # or "single_prompt"
+        "perplexity_result": None,
+        "generation_mode": "deep_dive",  # or "single_prompt" or "perplexity_search"
         "cyrus_root": get_settings().cyrus_root_path,
         "timer_elapsed": None,
         "topic_input": "",
-        "theme": "dark",
+        "perplexity_system_prompt": "",
+        "perplexity_query": "",
+        "theme": "light",
     }
 
     for key, value in defaults.items():
@@ -785,6 +789,17 @@ def render_sidebar() -> None:
         unsafe_allow_html=True,
     )
 
+    perplexity_ok = settings.is_perplexity_configured()
+    st.sidebar.markdown(
+        f"""
+        <div class="status-indicator">
+            <span class="dot {'connected' if perplexity_ok else 'disconnected'}"></span>
+            <span>Perplexity {'Connected' if perplexity_ok else 'Not Configured'}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     st.sidebar.markdown("---")
 
     st.sidebar.markdown("### Configuration")
@@ -818,7 +833,7 @@ def render_sidebar() -> None:
 
 
 def render_output_section() -> None:
-    """Render the output section with Master Guide or Single Prompt result."""
+    """Render the output section with Master Guide, Single Prompt, or Perplexity result."""
     mode = st.session_state.generation_mode
 
     if mode == "deep_dive":
@@ -850,7 +865,7 @@ def render_output_section() -> None:
         with st.expander("View Full Guide", expanded=True):
             st.markdown(result.master_guide)
 
-    else:  # single_prompt mode
+    elif mode == "single_prompt":
         result = st.session_state.single_prompt_result
         if not result:
             st.markdown(
@@ -875,6 +890,32 @@ def render_output_section() -> None:
 
         with st.expander("View Output", expanded=True):
             st.markdown(result.output)
+
+    else:  # perplexity_search mode
+        result = st.session_state.perplexity_result
+        if not result:
+            st.markdown(
+                """
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <div class="empty-state-text">Enter a search query above to get web-sourced answers</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            return
+
+        if not result.success:
+            st.error(f"Search failed: {result.error}")
+            return
+
+        st.markdown(
+            '<div class="output-label">Search Results</div>',
+            unsafe_allow_html=True,
+        )
+
+        with st.expander("View Results", expanded=True):
+            st.markdown(result.content)
 
 
 def run_pipeline(topic: str) -> None:
@@ -903,6 +944,24 @@ def run_single_prompt(prompt: str) -> None:
     st.session_state.single_prompt_result = result
 
 
+def run_perplexity_search(query: str, system_prompt: str = "") -> None:
+    """Execute web search using Perplexity API.
+
+    Args:
+        query: The search query.
+        system_prompt: Optional custom system prompt.
+    """
+    start_time = datetime.now()
+
+    client = PerplexityClient()
+    result = client.search(query, system_prompt=system_prompt if system_prompt else None)
+
+    elapsed = (datetime.now() - start_time).total_seconds()
+
+    st.session_state.timer_elapsed = elapsed
+    st.session_state.perplexity_result = result
+
+
 # ============== MAIN ==============
 
 def main() -> None:
@@ -918,7 +977,7 @@ def main() -> None:
 
     theme = st.session_state.theme
     if theme == "system":
-        theme = "dark"
+        theme = "light"
     inject_custom_css(theme)
 
     render_sidebar()
@@ -952,12 +1011,18 @@ def main() -> None:
                 content_to_save = result.master_guide if result else None
                 low_conf = result.low_confidence_sections if result else 0
                 mode_str = "deep_dive"
-            else:
+            elif st.session_state.generation_mode == "single_prompt":
                 result = st.session_state.single_prompt_result
                 save_disabled = not (result and result.success)
                 content_to_save = result.output if result else None
                 low_conf = 0  # Single prompt has no confidence tracking
                 mode_str = "single_prompt"
+            else:  # perplexity_search
+                result = st.session_state.perplexity_result
+                save_disabled = not (result and result.success)
+                content_to_save = result.content if result else None
+                low_conf = 0  # Perplexity has no confidence tracking
+                mode_str = "perplexity_search"
 
             if st.button("Save", disabled=save_disabled, use_container_width=True, key="save_top"):
                 if result and result.success and content_to_save:
@@ -999,11 +1064,19 @@ def main() -> None:
     # ===== MODE SELECTION =====
     st.markdown('<div class="section-label">Mode</div>', unsafe_allow_html=True)
 
+    mode_options = ["deep_dive", "single_prompt", "perplexity_search"]
+    mode_labels = {
+        "deep_dive": "Deep Dive (4-step)",
+        "single_prompt": "Single Prompt (with KB context)",
+        "perplexity_search": "Perplexity Search (web)",
+    }
+    current_index = mode_options.index(st.session_state.generation_mode) if st.session_state.generation_mode in mode_options else 0
+
     mode = st.radio(
         "Generation Mode",
-        options=["deep_dive", "single_prompt"],
-        format_func=lambda x: "Deep Dive (4-step)" if x == "deep_dive" else "Single Prompt (with KB context)",
-        index=0 if st.session_state.generation_mode == "deep_dive" else 1,
+        options=mode_options,
+        format_func=lambda x: mode_labels.get(x, x),
+        index=current_index,
         horizontal=True,
         label_visibility="collapsed",
         key="mode_radio",
@@ -1016,17 +1089,53 @@ def main() -> None:
     if st.session_state.generation_mode == "deep_dive":
         st.markdown('<div class="section-label">Topic</div>', unsafe_allow_html=True)
         placeholder = "Enter a topic to explore...\n\nExamples:\n• Distributed consensus algorithms\n• Kubernetes architecture\n• Real-time data streaming"
-    else:
+        topic = st.text_area(
+            "Topic/Prompt",
+            height=120,
+            placeholder=placeholder,
+            key="topic_input",
+            label_visibility="collapsed",
+        )
+    elif st.session_state.generation_mode == "single_prompt":
         st.markdown('<div class="section-label">Prompt</div>', unsafe_allow_html=True)
         placeholder = "Enter your prompt...\n\nExamples:\n• Generate Principal TPM lexicon terms for system design\n• Create a comparison table of consensus protocols\n• Summarize key SRE metrics across all documents"
+        topic = st.text_area(
+            "Topic/Prompt",
+            height=120,
+            placeholder=placeholder,
+            key="topic_input",
+            label_visibility="collapsed",
+        )
+    else:  # perplexity_search - Two text areas
+        # System Prompt (optional)
+        st.markdown('<div class="section-label">System Prompt (Optional)</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<p style="font-size: 12px; color: var(--text-muted); margin: -8px 0 8px 0;">'
+            'Customize how Perplexity responds. Leave blank for default research assistant behavior.</p>',
+            unsafe_allow_html=True,
+        )
+        perplexity_system = st.text_area(
+            "System Prompt",
+            height=80,
+            placeholder="Example: You are an expert in cloud architecture. Provide detailed technical comparisons with code examples where relevant.",
+            key="perplexity_system_prompt",
+            label_visibility="collapsed",
+        )
 
-    topic = st.text_area(
-        "Topic/Prompt",
-        height=120,
-        placeholder=placeholder,
-        key="topic_input",
-        label_visibility="collapsed",
-    )
+        # Search Query (required)
+        st.markdown('<div class="section-label">Search Query</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<p style="font-size: 12px; color: var(--text-muted); margin: -8px 0 8px 0;">'
+            'Your question or topic to search the web for.</p>',
+            unsafe_allow_html=True,
+        )
+        topic = st.text_area(
+            "Search Query",
+            height=100,
+            placeholder="Enter your search query...\n\nExamples:\n• Latest trends in distributed systems 2026\n• Best practices for Kubernetes security\n• Compare AWS Lambda vs Google Cloud Functions",
+            key="perplexity_query",
+            label_visibility="collapsed",
+        )
 
     # ===== ACTION ROW =====
     st.markdown("<div style='height: 16px'></div>", unsafe_allow_html=True)
@@ -1062,8 +1171,11 @@ def main() -> None:
         if st.button("Clear", use_container_width=True):
             st.session_state.pipeline_result = None
             st.session_state.single_prompt_result = None
+            st.session_state.perplexity_result = None
             st.session_state.timer_elapsed = None
             st.session_state.topic_input = ""
+            st.session_state.perplexity_system_prompt = ""
+            st.session_state.perplexity_query = ""
             st.rerun()
 
     # ===== EXECUTION =====
@@ -1071,14 +1183,19 @@ def main() -> None:
         # Clear previous results before generating new one
         st.session_state.pipeline_result = None
         st.session_state.single_prompt_result = None
+        st.session_state.perplexity_result = None
         st.session_state.timer_elapsed = None
 
         if st.session_state.generation_mode == "deep_dive":
             with st.spinner("Generating guide..."):
                 run_pipeline(topic.strip())
-        else:
+        elif st.session_state.generation_mode == "single_prompt":
             with st.spinner("Generating with KB context..."):
                 run_single_prompt(topic.strip())
+        else:  # perplexity_search
+            system_prompt = st.session_state.get("perplexity_system_prompt", "")
+            with st.spinner("Searching with Perplexity..."):
+                run_perplexity_search(topic.strip(), system_prompt=system_prompt)
         st.rerun()
 
     st.markdown("---")

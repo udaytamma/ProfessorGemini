@@ -1,9 +1,9 @@
 [theme]
-# Professor Gemini - Refined Dark Theme (default)
-primaryColor = "#DAA520"
-backgroundColor = "#0f0f0f"
-secondaryBackgroundColor = "#1a1a1a"
-textColor = "#e8e8e8"
+# Professor Gemini - Light Theme (default)
+primaryColor = "#b8860b"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8f9fa"
+textColor = "#202124"
 font = "sans serif"
 
 [server]
