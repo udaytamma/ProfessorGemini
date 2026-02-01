@@ -63,9 +63,9 @@ def inject_custom_css(theme: str = "dark") -> None:
             "text_primary": "#e8eaed",
             "text_secondary": "#9aa0a6",
             "text_muted": "#5f6368",
-            "accent": "#DAA520",
-            "accent_hover": "#e6b422",
-            "accent_light": "rgba(218, 165, 32, 0.15)",
+            "accent": "#E8B923",
+            "accent_hover": "#f5c842",
+            "accent_light": "rgba(232, 185, 35, 0.15)",
             "border": "#3c4043",
             "border_light": "#5f6368",
             "success": "#81c995",
@@ -184,7 +184,7 @@ def inject_custom_css(theme: str = "dark") -> None:
 
         .page-subtitle {{
             font-size: 15px;
-            color: var(--text-muted);
+            color: var(--text-secondary);
             margin-top: 2px;
         }}
 
@@ -196,12 +196,12 @@ def inject_custom_css(theme: str = "dark") -> None:
 
         /* ===== SECTION LABEL ===== */
         .section-label {{
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-muted);
-            margin-bottom: 12px;
+            letter-spacing: 1px;
+            color: var(--accent);
+            margin-bottom: 10px;
         }}
 
         /* ===== INPUT CONTAINER ===== */
@@ -238,27 +238,42 @@ def inject_custom_css(theme: str = "dark") -> None:
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 12px;
-            border-radius: 16px;
-            font-size: 15px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 12px;
             font-weight: 500;
+            letter-spacing: 0.02em;
         }}
 
         .status-pill.ready {{
-            background: var(--bg-tertiary);
-            color: var(--text-secondary);
+            background: rgba(76, 175, 80, 0.12);
+            color: #6fbf73;
+        }}
+
+        .status-pill.working {{
+            background: rgba(232, 185, 35, 0.15);
+            color: var(--accent);
         }}
 
         .status-pill.success {{
-            background: var(--success-bg);
-            color: var(--success);
+            background: rgba(232, 185, 35, 0.12);
+            color: var(--accent);
         }}
 
         .status-pill-dot {{
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             background: currentColor;
+        }}
+
+        .status-pill.working .status-pill-dot {{
+            animation: pulse 1.5s ease-in-out infinite;
+        }}
+
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.4; }}
         }}
 
         /* ===== BUTTONS ===== */
@@ -326,8 +341,8 @@ def inject_custom_css(theme: str = "dark") -> None:
         }}
 
         .stTextArea textarea:focus {{
-            border-color: var(--accent) !important;
-            box-shadow: none !important;
+            border-color: var(--border-light) !important;
+            box-shadow: 0 0 0 1px var(--border-light) !important;
             outline: none !important;
         }}
 
@@ -354,11 +369,11 @@ def inject_custom_css(theme: str = "dark") -> None:
 
         /* ===== OUTPUT SECTION ===== */
         .output-label {{
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 11px;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-muted);
+            letter-spacing: 1px;
+            color: var(--text-secondary);
             margin-bottom: 12px;
         }}
 
@@ -595,26 +610,34 @@ def inject_custom_css(theme: str = "dark") -> None:
             color: var(--text-secondary) !important;
         }}
 
-        /* ===== THEME TOGGLE ===== */
-        [data-testid="stButton"][data-key="theme_toggle"] button {{
-            background: var(--bg-secondary) !important;
-            border: 1px solid var(--border) !important;
-            padding: 0 !important;
-            font-size: 16px !important;
-            width: 36px !important;
-            min-width: 36px !important;
-            height: 36px !important;
-            border-radius: 4px !important;
+        /* ===== HEADER BUTTONS (Save & Theme) ===== */
+        .header-buttons-row [data-testid="stHorizontalBlock"] {{
+            gap: 8px !important;
         }}
 
-        [data-testid="stButton"][data-key="theme_toggle"] button:hover {{
+        .header-buttons-row .stButton > button,
+        .header-buttons-row .stDownloadButton > button,
+        .header-buttons-row [data-testid="stDownloadButton"] > button {{
+            height: 38px !important;
+            min-height: 38px !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            border-radius: 6px !important;
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text-primary) !important;
+        }}
+
+        .header-buttons-row .stButton > button:hover,
+        .header-buttons-row .stDownloadButton > button:hover,
+        .header-buttons-row [data-testid="stDownloadButton"] > button:hover {{
             background: var(--bg-tertiary) !important;
         }}
 
-        /* ===== SAVE BUTTON (TOP) ===== */
-        [data-testid="stButton"][data-key="save_top"] button {{
-            height: 36px !important;
-            min-height: 36px !important;
+        .header-buttons-row .stDownloadButton > button:disabled,
+        .header-buttons-row [data-testid="stDownloadButton"] > button:disabled {{
+            opacity: 0.5 !important;
+            color: var(--text-secondary) !important;
         }}
 
         /* ===== STATUS INDICATORS ===== */
@@ -731,6 +754,58 @@ def inject_custom_css(theme: str = "dark") -> None:
             border-color: var(--border) !important;
             border-radius: 4px !important;
         }}
+
+        /* ===== MODE SELECTOR (Unified Segmented Control) ===== */
+        .mode-buttons-row {{
+            margin-bottom: 20px;
+        }}
+
+        .mode-buttons-row [data-testid="stHorizontalBlock"] {{
+            gap: 8px !important;
+            background: transparent;
+            padding: 0;
+            border: none;
+        }}
+
+        .mode-buttons-row [data-testid="column"] {{
+            padding: 0 !important;
+        }}
+
+        .mode-buttons-row .stButton > button {{
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 8px !important;
+            padding: 14px 24px !important;
+            min-height: 48px !important;
+            height: 48px !important;
+            font-family: var(--font-display) !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            color: var(--text-secondary) !important;
+            transition: all 0.15s ease !important;
+            white-space: nowrap !important;
+            letter-spacing: 0.01em !important;
+        }}
+
+        .mode-buttons-row .stButton > button:hover {{
+            background: var(--bg-tertiary) !important;
+            border-color: var(--border-light) !important;
+            color: var(--text-primary) !important;
+        }}
+
+        .mode-buttons-row .stButton > button[kind="primary"],
+        .mode-buttons-row .stButton > button[data-testid="stBaseButton-primary"] {{
+            background: var(--accent) !important;
+            border-color: var(--accent) !important;
+            color: #111 !important;
+            font-weight: 600 !important;
+        }}
+
+        .mode-buttons-row .stButton > button[kind="primary"]:hover,
+        .mode-buttons-row .stButton > button[data-testid="stBaseButton-primary"]:hover {{
+            background: var(--accent-hover) !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+        }}
     </style>
     """
 
@@ -748,6 +823,8 @@ def init_session_state() -> None:
         "generation_mode": "deep_dive",  # or "single_prompt" or "perplexity_search"
         "cyrus_root": get_settings().cyrus_root_path,
         "timer_elapsed": None,
+        "is_generating": False,
+        "pending_query": None,
         "topic_input": "",
         "perplexity_system_prompt": "",
         "perplexity_query": "",
@@ -1002,7 +1079,8 @@ def main() -> None:
 
     with header_right:
         # Save button and theme toggle in top right
-        col_save, col_theme = st.columns([2, 1])
+        st.markdown('<div class="header-buttons-row">', unsafe_allow_html=True)
+        col_save, col_theme = st.columns(2)
 
         with col_save:
             # Determine which result to use based on mode
@@ -1046,9 +1124,19 @@ def main() -> None:
             theme_icon = "🌙" if current_theme == "dark" else "☀️" if current_theme == "light" else "💻"
             next_theme = {"dark": "light", "light": "system", "system": "dark"}
 
-            if st.button(theme_icon, key="theme_toggle", help=f"Theme: {current_theme.title()}"):
+            # Disable theme toggle while generating to prevent interruption
+            is_generating = st.session_state.get("is_generating", False)
+            if st.button(
+                theme_icon,
+                key="theme_toggle",
+                help=f"Theme: {current_theme.title()}" + (" (disabled while generating)" if is_generating else ""),
+                disabled=is_generating,
+                use_container_width=True
+            ):
                 st.session_state.theme = next_theme[current_theme]
                 st.rerun()
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -1066,26 +1154,50 @@ def main() -> None:
     # ===== MODE SELECTION =====
     st.markdown('<div class="section-label">Mode</div>', unsafe_allow_html=True)
 
-    mode_options = ["deep_dive", "single_prompt", "perplexity_search"]
-    mode_labels = {
-        "deep_dive": "Deep Dive (4-step)",
-        "single_prompt": "Single Prompt (with KB context)",
-        "perplexity_search": "Perplexity Search (web)",
-    }
-    current_index = mode_options.index(st.session_state.generation_mode) if st.session_state.generation_mode in mode_options else 0
+    current_mode = st.session_state.generation_mode
+    is_generating = st.session_state.get("is_generating", False)
 
-    mode = st.radio(
-        "Generation Mode",
-        options=mode_options,
-        format_func=lambda x: mode_labels.get(x, x),
-        index=current_index,
-        horizontal=True,
-        label_visibility="collapsed",
-        key="mode_radio",
-    )
-    if mode != st.session_state.generation_mode:
-        st.session_state.generation_mode = mode
-        st.rerun()
+    # Unified segmented control - disabled while generating
+    st.markdown('<div class="mode-buttons-row">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        is_selected = current_mode == "deep_dive"
+        if st.button(
+            "Deep Dive",
+            key="mode_deep_dive",
+            use_container_width=True,
+            type="primary" if is_selected else "secondary",
+            disabled=is_generating
+        ):
+            st.session_state.generation_mode = "deep_dive"
+            st.rerun()
+
+    with col2:
+        is_selected = current_mode == "single_prompt"
+        if st.button(
+            "One Shot",
+            key="mode_single_prompt",
+            use_container_width=True,
+            type="primary" if is_selected else "secondary",
+            disabled=is_generating
+        ):
+            st.session_state.generation_mode = "single_prompt"
+            st.rerun()
+
+    with col3:
+        is_selected = current_mode == "perplexity_search"
+        if st.button(
+            "Perplexity",
+            key="mode_perplexity",
+            use_container_width=True,
+            type="primary" if is_selected else "secondary",
+            disabled=is_generating
+        ):
+            st.session_state.generation_mode = "perplexity_search"
+            st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # ===== INPUT SECTION =====
     if st.session_state.generation_mode == "deep_dive":
@@ -1144,33 +1256,21 @@ def main() -> None:
 
     col1, col2, col3, col4 = st.columns([4, 2, 1, 1])
 
+    # Create placeholder for status - will be updated during generation
     with col1:
-        # Status indicator
-        if st.session_state.timer_elapsed is not None:
-            elapsed = st.session_state.timer_elapsed
-            minutes = int(elapsed // 60)
-            seconds = elapsed % 60
-            timer_text = f"{minutes}m {seconds:.1f}s" if minutes > 0 else f"{seconds:.1f}s"
-            st.markdown(
-                f'<div class="status-pill success"><span class="status-pill-dot"></span>Completed in {timer_text}</div>',
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                '<div class="status-pill ready"><span class="status-pill-dot"></span>Ready</div>',
-                unsafe_allow_html=True,
-            )
+        status_placeholder = st.empty()
 
     with col3:
+        is_gen = st.session_state.get("is_generating", False)
         start_clicked = st.button(
-            "Generate",
+            "Generate" if not is_gen else "Working...",
             type="primary",
-            disabled=not topic.strip(),
+            disabled=not topic.strip() or is_gen,
             use_container_width=True,
         )
 
     with col4:
-        if st.button("Clear", use_container_width=True):
+        if st.button("Clear", use_container_width=True, disabled=st.session_state.get("is_generating", False)):
             st.session_state.pipeline_result = None
             st.session_state.single_prompt_result = None
             st.session_state.perplexity_result = None
@@ -1180,25 +1280,63 @@ def main() -> None:
             st.session_state.perplexity_query = ""
             st.rerun()
 
-    # ===== EXECUTION =====
-    if start_clicked and topic.strip():
-        # Clear previous results before generating new one
+    # ===== EXECUTION (Two-phase approach) =====
+    is_generating = st.session_state.get("is_generating", False)
+    pending_query = st.session_state.get("pending_query", None)
+
+    # Phase 1: User clicked Generate - set flag and rerun to disable buttons
+    if start_clicked and topic.strip() and not is_generating:
+        st.session_state.is_generating = True
+        st.session_state.pending_query = topic.strip()
         st.session_state.pipeline_result = None
         st.session_state.single_prompt_result = None
         st.session_state.perplexity_result = None
         st.session_state.timer_elapsed = None
+        st.rerun()  # Rerun to update UI with disabled buttons
 
-        if st.session_state.generation_mode == "deep_dive":
-            with st.spinner("Generating guide..."):
-                run_pipeline(topic.strip())
-        elif st.session_state.generation_mode == "single_prompt":
-            with st.spinner("Generating with KB context..."):
-                run_single_prompt(topic.strip())
-        else:  # perplexity_search
-            system_prompt = st.session_state.get("perplexity_system_prompt", "")
-            with st.spinner("Searching with Perplexity..."):
-                run_perplexity_search(topic.strip(), system_prompt=system_prompt)
-        st.rerun()
+    # Phase 2: Buttons are now disabled, run the actual query
+    if is_generating and pending_query:
+        # Show working status
+        status_placeholder.markdown(
+            '<div class="status-pill working"><span class="status-pill-dot"></span>Working</div>',
+            unsafe_allow_html=True,
+        )
+
+        try:
+            if st.session_state.generation_mode == "deep_dive":
+                run_pipeline(pending_query)
+            elif st.session_state.generation_mode == "single_prompt":
+                run_single_prompt(pending_query)
+            else:  # perplexity_search
+                system_prompt = st.session_state.get("perplexity_system_prompt", "")
+                run_perplexity_search(pending_query, system_prompt=system_prompt)
+        finally:
+            # Clear generating state
+            st.session_state.is_generating = False
+            st.session_state.pending_query = None
+
+        st.rerun()  # Rerun to show results
+
+    # Show status based on state
+    if is_generating:
+        status_placeholder.markdown(
+            '<div class="status-pill working"><span class="status-pill-dot"></span>Working</div>',
+            unsafe_allow_html=True,
+        )
+    elif st.session_state.timer_elapsed is not None:
+        elapsed = st.session_state.timer_elapsed
+        minutes = int(elapsed // 60)
+        seconds = elapsed % 60
+        timer_text = f"{minutes}m {seconds:.1f}s" if minutes > 0 else f"{seconds:.1f}s"
+        status_placeholder.markdown(
+            f'<div class="status-pill success"><span class="status-pill-dot"></span>Completed in {timer_text}</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        status_placeholder.markdown(
+            '<div class="status-pill ready"><span class="status-pill-dot"></span>Ready</div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown("---")
 
