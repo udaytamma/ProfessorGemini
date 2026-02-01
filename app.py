@@ -8,6 +8,7 @@ Usage:
 """
 
 import atexit
+import re
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -1009,35 +1010,36 @@ def main() -> None:
                 result = st.session_state.pipeline_result
                 save_disabled = not (result and result.success)
                 content_to_save = result.master_guide if result else None
-                low_conf = result.low_confidence_sections if result else 0
                 mode_str = "deep_dive"
             elif st.session_state.generation_mode == "single_prompt":
                 result = st.session_state.single_prompt_result
                 save_disabled = not (result and result.success)
                 content_to_save = result.output if result else None
-                low_conf = 0  # Single prompt has no confidence tracking
                 mode_str = "single_prompt"
             else:  # perplexity_search
                 result = st.session_state.perplexity_result
                 save_disabled = not (result and result.success)
                 content_to_save = result.content if result else None
-                low_conf = 0  # Perplexity has no confidence tracking
                 mode_str = "perplexity_search"
 
-            if st.button("Save", disabled=save_disabled, use_container_width=True, key="save_top"):
-                if result and result.success and content_to_save:
-                    file_manager = FileManager(st.session_state.cyrus_root)
-                    success, filepath, message = file_manager.save_guide(
-                        content=content_to_save,
-                        low_confidence_count=low_conf,
-                        mode=mode_str,
-                    )
-                    if success:
-                        st.toast(f"Saved: {filepath.split('/')[-1]}", icon="✅")
-                        if mode_str == "deep_dive":
-                            RequestLogger().log_session(result)
-                    else:
-                        st.toast(f"Failed: {message}", icon="🚫")
+            # Generate filename from topic
+            topic_text = st.session_state.get("topic_input", "guide")
+            if not topic_text:
+                topic_text = "guide"
+            # Sanitize filename: lowercase, replace spaces with hyphens, remove special chars
+            sanitized = re.sub(r'[^\w\s-]', '', topic_text.lower())
+            sanitized = re.sub(r'[-\s]+', '-', sanitized).strip('-')[:50]
+            filename = f"{sanitized}-{mode_str}.md" if sanitized else f"guide-{mode_str}.md"
+
+            st.download_button(
+                label="Save",
+                data=content_to_save if content_to_save else "",
+                file_name=filename,
+                mime="text/markdown",
+                disabled=save_disabled,
+                use_container_width=True,
+                key="save_top",
+            )
 
         with col_theme:
             current_theme = st.session_state.theme
