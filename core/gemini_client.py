@@ -21,6 +21,36 @@ from config.settings import get_settings
 logger = logging.getLogger(__name__)
 
 
+def _safe_extract_text(response) -> str:
+    """Safely extract text from a Gemini API response.
+
+    The response.text property can raise ValueError when the response
+    contains no text parts (e.g., only tool calls in a multipart response).
+    This function handles that gracefully.
+
+    Args:
+        response: Gemini GenerateContentResponse object.
+
+    Returns:
+        Extracted text string, or empty string on failure.
+    """
+    try:
+        text = response.text
+        return text if text else ""
+    except (ValueError, AttributeError) as e:
+        logger.warning("Could not extract text from Gemini response: %s", e)
+        # Fallback: try to extract text from response parts directly
+        try:
+            parts = []
+            for candidate in response.candidates:
+                for part in candidate.content.parts:
+                    if hasattr(part, "text") and part.text:
+                        parts.append(part.text)
+            return "\n".join(parts)
+        except Exception:
+            return ""
+
+
 @dataclass(slots=True)
 class GeminiResponse:
     """Response from Gemini API call.
@@ -540,11 +570,14 @@ Generate a comprehensive, high-quality response."""
                     config=types.GenerateContentConfig(**config_kwargs),
                 )
 
-                if response.text:
+                # response.text can raise ValueError if no text parts exist
+                # (e.g., multipart response with only tool calls)
+                text = _safe_extract_text(response)
+                if text:
                     duration_ms = int((time.time() - start_time) * 1000)
                     logger.info("Gemini %s completed in %dms", operation, duration_ms)
                     return GeminiResponse(
-                        content=response.text,
+                        content=text,
                         model=self._settings.gemini_model,
                         duration_ms=duration_ms,
                         success=True,
@@ -613,11 +646,13 @@ Generate a comprehensive, high-quality response."""
                     config=types.GenerateContentConfig(**config_kwargs),
                 )
 
-                if response.text:
+                # response.text can raise ValueError if no text parts exist
+                text = _safe_extract_text(response)
+                if text:
                     duration_ms = int((time.time() - start_time) * 1000)
                     logger.info("Gemini %s completed in %dms (async)", operation, duration_ms)
                     return GeminiResponse(
-                        content=response.text,
+                        content=text,
                         model=self._settings.gemini_model,
                         duration_ms=duration_ms,
                         success=True,
